@@ -1,0 +1,14 @@
+# Exclude IntelliJ build folders
+out/
+target/
+
+# Exclude absolutely all executables
+*.jar
+*.exe
+
+# Exclude your local stash from testing
+vault.enc
+
+# Exclude IDE-specific configurations
+.idea/
+*.iml
