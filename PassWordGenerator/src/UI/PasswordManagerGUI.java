@@ -1,6 +1,7 @@
 package UI;
 
 import crypto.CryptoUtils;
+import crypto.PasswordGenerator;
 import model.PasswordEntry;
 
 import javax.swing.*;
