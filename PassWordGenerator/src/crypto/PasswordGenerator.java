@@ -1,4 +1,5 @@
-import javax.management.relation.RelationNotFoundException;
+package crypto;
+
 import java.util.Random;
 
 //This class works as the backend and will generate the password
