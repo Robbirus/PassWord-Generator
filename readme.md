@@ -47,7 +47,7 @@ Lancement via l'Exécutable JAR
 Téléchargez le fichier VaultJar.jar depuis l'onglet Releases, puis double-cliquez dessus ou utilisez votre terminal :
 
 ```bash
-java -jar VaultJar.jar
+java -jar PassWord-Generator.jar
 ```
 Lancement via l'Exécutable Windows (.EXE).
 Pour les utilisateurs Windows sans Java préinstallé, téléchargez l'installateur PassWordGenerator.exe depuis l'onglet Releases et installez-le directement.
