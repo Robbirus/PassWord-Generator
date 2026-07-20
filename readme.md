@@ -1,6 +1,6 @@
 # 🔐 Gestionnaire de Mots de Passe Java
 
-VaultJar est un gestionnaire de mots de passe de bureau léger, sécurisé et multiplateforme développé en Java Swing. Il permet de générer des mots de passe robustes et de stocker vos identifiants de manière hautement sécurisée grâce à un chiffrement de bout en bout.
+PasswordGenerator est un gestionnaire de mots de passe de bureau léger, sécurisé et multiplateforme développé en Java Swing. Il permet de générer des mots de passe robustes et de stocker vos identifiants de manière hautement sécurisée grâce à un chiffrement de bout en bout.
 
 ---
 
