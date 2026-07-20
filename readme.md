@@ -10,16 +10,15 @@ Pour maintenir de bonnes pratiques de développement, le projet est structuré s
 
 ```text
 src/
-└── com/
-    └── vaultjar/
-        ├── App.java                 # Point d'entrée de l'application
-        ├── model/
-        │   └── PasswordEntry.java   # Structure de données d'un compte
-        ├── crypto/
-        │   ├── CryptoUtils.java     # Moteur de chiffrement AES-256 GCM
-        │   └── PasswordGenerator.java # Logique de génération de mots de passe
-        └── ui/
-            └── PasswordManagerGUI.java # Interface graphique (Swing CardLayout)
+└── PassWord-Generator/
+    ├── App.java                 # Point d'entrée de l'application
+    ├── model/
+    │   └── PasswordEntry.java   # Structure de données d'un compte
+    ├── crypto/
+    │   ├── CryptoUtils.java     # Moteur de chiffrement AES-256 GCM
+    │   └── PasswordGenerator.java # Logique de génération de mots de passe
+    └── UI/
+        └── PasswordManagerGUI.java # Interface graphique (Swing CardLayout)
 ```
 ## 📁 Rangement des fichiers :
 model/ : Contient les objets métiers (les données pures).
