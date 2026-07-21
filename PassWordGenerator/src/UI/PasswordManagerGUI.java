@@ -2,12 +2,11 @@ package UI;
 
 import crypto.CryptoUtils;
 import crypto.PasswordGenerator;
+import crypto.RecoveryKeyManager;
 import model.PasswordEntry;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -18,165 +17,333 @@ public class PasswordManagerGUI extends JFrame {
     private CardLayout cardLayout;
     private JPanel mainPanel;
     private String currentMasterPassword = "";
+    private String currentLogin = "";
+    private String currentRecoveryKey = "";
     private final String FILE_NAME = System.getProperty("user.home") + File.separator + ".vaultjar" + File.separator + "vault.enc";
 
-    // Test data
     private ArrayList<PasswordEntry> fakeDatabase;
-
     private DashboardPanel dashboardPanel;
     private PasswordGenerator passwordGenerator;
 
     public PasswordManagerGUI() {
         super("Mon Gestionnaire de Mots de Passe");
-        setSize(600, 500);
+        setSize(650, 550);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
         fakeDatabase = new ArrayList<>();
-
         passwordGenerator = new PasswordGenerator();
 
         cardLayout = new CardLayout();
         mainPanel = new JPanel(cardLayout);
 
-        // Creation of the 3 screens
-        JPanel loginPanel = createLoginPanel();
+        // Vérification de l'existence du coffre-fort pour déterminer l'écran initial
+        File vaultFile = new File(FILE_NAME);
+        boolean vaultExists = vaultFile.exists();
+
+        JPanel authPanel = vaultExists ? createLoginPanel() : createRegisterPanel();
         this.dashboardPanel = new DashboardPanel(this);
         JPanel formPanel = createFormPanel();
 
-        mainPanel.add(loginPanel, "LOGIN");
+        mainPanel.add(authPanel, "AUTH");
         mainPanel.add(dashboardPanel, "DASHBOARD");
         mainPanel.add(formPanel, "FORM");
 
         add(mainPanel);
-        cardLayout.show(mainPanel, "LOGIN");
+        cardLayout.show(mainPanel, "AUTH");
     }
 
-    private void initFakeData() {
-        fakeDatabase = new ArrayList<>();
-        fakeDatabase.add(new PasswordEntry("Google", "mon.email@gmail.com", "SuperPassword123!"));
-        fakeDatabase.add(new PasswordEntry("GitHub", "DevJava2026", "CodeSecret456#"));
-        fakeDatabase.add(new PasswordEntry("Netflix", "famille@stream.fr", "Chill&Popcorn789"));
+    public void showFormScreen() {
+        cardLayout.show(mainPanel, "FORM");
     }
 
-    // Updates the text of the displayed table
     public void refreshDashboardDisplay() {
         if (dashboardPanel != null) {
             dashboardPanel.loadDataIntoTable(fakeDatabase);
         }
     }
 
-    // -- SCREEN 1: LOGIN ---
-    private JPanel createLoginPanel() {
-        JPanel panel = new JPanel();
-        panel.setLayout(null);
+    // -- SCREEN 1A: ACCOUNT CREATION (First Launch) ---
+    private JPanel createRegisterPanel() {
+        JPanel panel = new JPanel(null);
 
-        JLabel label = new JLabel("Mot de passe maître :", SwingConstants.CENTER);
-        label.setFont(new Font("Dialog", Font.BOLD, 18));
-        label.setBounds(150, 130, 300, 30);
-        panel.add(label);
+        JLabel title = new JLabel("Bienvenue ! Configurez votre coffre-fort", SwingConstants.CENTER);
+        title.setFont(new Font("Dialog", Font.BOLD, 20));
+        title.setBounds(0, 30, 650, 35);
+        panel.add(title);
 
-        JPasswordField masterPasswordField = new JPasswordField();
-        masterPasswordField.setBounds(150, 170, 250, 40);
-        masterPasswordField.setFont(new Font("Dialog", Font.PLAIN, 18));
-        panel.add(masterPasswordField);
+        JLabel userLabel = new JLabel("Identifiant / Login :");
+        userLabel.setBounds(120, 100, 180, 30);
+        panel.add(userLabel);
+        JTextField userInput = new JTextField();
+        userInput.setBounds(300, 100, 220, 30);
+        panel.add(userInput);
 
-        char defaultEchoChar = masterPasswordField.getEchoChar();
+        JLabel passLabel = new JLabel("Mot de passe maître :");
+        passLabel.setBounds(120, 150, 180, 30);
+        panel.add(passLabel);
+        JPasswordField passInput = new JPasswordField();
+        passInput.setBounds(300, 150, 220, 30);
+        panel.add(passInput);
 
-        JButton toggleVisibilityButton = new JButton("S");
-        toggleVisibilityButton.setBounds(405, 170, 45, 40);
-        toggleVisibilityButton.setFont(new Font("Dialog", Font.PLAIN, 16));
-        toggleVisibilityButton.setFocusPainted(false);
+        JLabel confirmLabel = new JLabel("Confirmer le mot de passe :");
+        confirmLabel.setBounds(120, 200, 180, 30);
+        panel.add(confirmLabel);
+        JPasswordField confirmInput = new JPasswordField();
+        confirmInput.setBounds(300, 200, 220, 30);
+        panel.add(confirmInput);
 
-        toggleVisibilityButton.addActionListener(new ActionListener() {
-            private boolean isPasswordVisible = false;
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if (isPasswordVisible) {
-                    masterPasswordField.setEchoChar(defaultEchoChar);
-                    toggleVisibilityButton.setText("S");
-                    isPasswordVisible = false;
-                } else {
-                    masterPasswordField.setEchoChar((char) 0);
-                    toggleVisibilityButton.setText("N");
-                    isPasswordVisible = true;
-                }
-                masterPasswordField.repaint();
+        JLabel infoLabel = new JLabel("<html><center><i>Ce mot de passe protégera l'ensemble de vos données.<br>Une clé de secours sera générée à l'étape suivante.</i></center></html>", SwingConstants.CENTER);
+        infoLabel.setBounds(50, 250, 550, 40);
+        panel.add(infoLabel);
+
+        JButton btnRegister = new JButton("Créer mon coffre-fort");
+        btnRegister.setFont(new Font("Dialog", Font.BOLD, 15));
+        btnRegister.setBounds(200, 310, 250, 45);
+        btnRegister.addActionListener(e -> {
+            String login = userInput.getText().trim();
+            String pass = new String(passInput.getPassword());
+            String confirm = new String(confirmInput.getPassword());
+
+            if (login.isEmpty() || pass.isEmpty() || confirm.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Veuillez remplir tous les champs.", "Erreur", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            if (!pass.equals(confirm)) {
+                JOptionPane.showMessageDialog(this, "Les mots de passe ne correspondent pas.", "Erreur", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            // Generation of the backup key and mandatory registration
+            String key = RecoveryKeyManager.generateKey();
+            boolean saved = promptSaveRecoveryKey(login, key);
+
+            if (saved) {
+                this.currentLogin = login;
+                this.currentMasterPassword = pass;
+                this.currentRecoveryKey = key;
+                this.fakeDatabase = new ArrayList<>();
+
+                saveVault(); // Creation of the initial encrypted file
+                refreshDashboardDisplay();
+                cardLayout.show(mainPanel, "DASHBOARD");
+            } else {
+                JOptionPane.showMessageDialog(this, "La sauvegarde de la clé de secours est obligatoire pour continuer.", "Attention", JOptionPane.WARNING_MESSAGE);
             }
         });
-        panel.add(toggleVisibilityButton);
-
-        JButton loginButton = new JButton("Déverrouiller");
-        loginButton.setBounds(200, 250, 200, 40);
-        loginButton.setFont(new Font("Dialog", Font.BOLD, 16));
-
-        loginButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                String input = new String(masterPasswordField.getPassword());
-                if (input.isEmpty()) return;
-
-                // We are trying to load and decrypt the vault with the password entered.
-                if (loadVault(input)) {
-                    currentMasterPassword = input; // We keep the password in memory for future backups.
-                    refreshDashboardDisplay();     // We refresh the table with the real data read
-                    cardLayout.show(mainPanel, "DASHBOARD");
-                } else {
-                    JOptionPane.showMessageDialog(PasswordManagerGUI.this,
-                            "Mot de passe maître incorrect ou fichier corrompu !", "Échec du déchiffrement", JOptionPane.ERROR_MESSAGE);
-                }
-            }
-        });
-        panel.add(loginButton);
+        panel.add(btnRegister);
 
         return panel;
     }
 
+    // -- SCREEN 1B: LOGIN (Return user) ---
+    private JPanel createLoginPanel() {
+        JPanel panel = new JPanel(null);
+
+        JLabel title = new JLabel("Déverrouiller votre coffre-fort", SwingConstants.CENTER);
+        title.setFont(new Font("Dialog", Font.BOLD, 22));
+        title.setBounds(0, 40, 650, 35);
+        panel.add(title);
+
+        JLabel userLabel = new JLabel("Identifiant / Login :");
+        userLabel.setBounds(150, 120, 150, 30);
+        panel.add(userLabel);
+        JTextField userInput = new JTextField();
+        userInput.setBounds(300, 120, 200, 30);
+        panel.add(userInput);
+
+        JLabel passLabel = new JLabel("Mot de passe maître :");
+        passLabel.setBounds(150, 170, 150, 30);
+        panel.add(passLabel);
+        JPasswordField passInput = new JPasswordField();
+        passInput.setBounds(300, 170, 200, 30);
+        panel.add(passInput);
+
+        JButton btnLogin = new JButton("Se connecter");
+        btnLogin.setFont(new Font("Dialog", Font.BOLD, 15));
+        btnLogin.setBounds(225, 230, 200, 40);
+        btnLogin.addActionListener(e -> {
+            String login = userInput.getText().trim();
+            String pass = new String(passInput.getPassword());
+
+            if (login.isEmpty() || pass.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Veuillez remplir tous les champs.", "Erreur", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            if (loadVault(login, pass)) {
+                this.currentLogin = login;
+                this.currentMasterPassword = pass;
+                refreshDashboardDisplay();
+                cardLayout.show(mainPanel, "DASHBOARD");
+            } else {
+                JOptionPane.showMessageDialog(this, "Identifiant ou mot de passe maître incorrect !", "Échec de connexion", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+        panel.add(btnLogin);
+
+        // Recovery Mode Button (Forgot Password)
+        JButton btnRecovery = new JButton("Mot de passe oublié ? Utiliser la clé de secours");
+        btnRecovery.setBounds(150, 310, 350, 30);
+        btnRecovery.addActionListener(e -> openRecoveryDialog());
+        panel.add(btnRecovery);
+
+        return panel;
+    }
+
+    // -- DIALOG: Mandatory key download .txt ----
+    private boolean promptSaveRecoveryKey(String login, String key) {
+        int opt = JOptionPane.showConfirmDialog(this,
+                "Votre clé de secours est : " + key + "\n\nVous DEVEZ enregistrer ce fichier texte sur votre ordinateur pour finaliser la création.",
+                "Enregistrement de la clé de secours", JOptionPane.OK_CANCEL_OPTION, JOptionPane.INFORMATION_MESSAGE);
+
+        if (opt == JOptionPane.OK_OPTION) {
+            JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setSelectedFile(new File("Vault_Recovery_Key_" + login + ".txt"));
+            int userSelection = fileChooser.showSaveDialog(this);
+
+            if (userSelection == JFileChooser.APPROVE_OPTION) {
+                File fileToSave = fileChooser.getSelectedFile();
+                return RecoveryKeyManager.saveKeyToFile(fileToSave, login, key);
+            }
+        }
+        return false;
+    }
+
+    // --- DIALOG: Connection by Backup Key ---
+    private void openRecoveryDialog() {
+        JDialog dialog = new JDialog(this, "Récupération par Clé de Secours", true);
+        dialog.setSize(450, 300);
+        dialog.setLocationRelativeTo(this);
+        dialog.setLayout(null);
+
+        JLabel lblLogin = new JLabel("Identifiant :");
+        lblLogin.setBounds(40, 30, 100, 30);
+        dialog.add(lblLogin);
+
+        JTextField txtLogin = new JTextField();
+        txtLogin.setBounds(150, 30, 230, 30);
+        dialog.add(txtLogin);
+
+        JLabel lblKey = new JLabel("Clé de Secours :");
+        lblKey.setBounds(40, 80, 120, 30);
+        dialog.add(lblKey);
+
+        JTextField txtKey = new JTextField();
+        txtKey.setBounds(150, 80, 230, 30);
+        dialog.add(txtKey);
+
+        JButton btnImport = new JButton("Charger un fichier .txt");
+        btnImport.setBounds(150, 120, 230, 25);
+        btnImport.addActionListener(evt -> {
+            JFileChooser fileChooser = new JFileChooser();
+            int option = fileChooser.showOpenDialog(dialog);
+            if (option == JFileChooser.APPROVE_OPTION) {
+                String extractedKey = RecoveryKeyManager.readKeyFromFile(fileChooser.getSelectedFile());
+                if (extractedKey != null) {
+                    txtKey.setText(extractedKey);
+                } else {
+                    JOptionPane.showMessageDialog(dialog, "Impossible de lire la clé depuis ce fichier.", "Erreur", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
+        dialog.add(btnImport);
+
+        JButton btnValidate = new JButton("Réinitialiser le mot de passe");
+        btnValidate.setBounds(100, 180, 250, 40);
+        btnValidate.setFont(new Font("Dialog", Font.BOLD, 13));
+        btnValidate.addActionListener(evt -> {
+            String login = txtLogin.getText().trim();
+            String key = txtKey.getText().trim();
+
+            if (login.isEmpty() || key.isEmpty()) {
+                JOptionPane.showMessageDialog(dialog, "Veuillez remplir tous les champs.", "Erreur", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            if (loadVaultWithKey(login, key)) {
+                dialog.dispose();
+                promptNewPasswordAfterRecovery(login);
+            } else {
+                JOptionPane.showMessageDialog(dialog, "Identifiant ou clé de secours invalide !", "Échec", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+        dialog.add(btnValidate);
+
+        dialog.setVisible(true);
+    }
+
+    // Master Password Reset after Recovery
+    private void promptNewPasswordAfterRecovery(String login) {
+        JPasswordField p1 = new JPasswordField();
+        JPasswordField p2 = new JPasswordField();
+        Object[] message = {
+                "Entrez votre nouveau mot de passe maître :", p1,
+                "Confirmez le nouveau mot de passe maître :", p2
+        };
+
+        int option = JOptionPane.showConfirmDialog(this, message, "Nouveau mot de passe maître", JOptionPane.OK_CANCEL_OPTION);
+        if (option == JOptionPane.OK_OPTION) {
+            String newPass = new String(p1.getPassword());
+            String confirmPass = new String(p2.getPassword());
+
+            if (!newPass.isEmpty() && newPass.equals(confirmPass)) {
+                String newKey = RecoveryKeyManager.generateKey();
+                if (promptSaveRecoveryKey(login, newKey)) {
+                    this.currentLogin = login;
+                    this.currentMasterPassword = newPass;
+                    this.currentRecoveryKey = newKey;
+
+                    saveVault(); // Save with the new password and the new key
+                    refreshDashboardDisplay();
+                    cardLayout.show(mainPanel, "DASHBOARD");
+                    JOptionPane.showMessageDialog(this, "Mot de passe maître réinitialisé avec succès !");
+                }
+            } else {
+                JOptionPane.showMessageDialog(this, "Les mots de passe ne correspondent pas ou sont vides.", "Erreur", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
     // -- SCREEN 3: ADDITION FORM ---
     private JPanel createFormPanel() {
-        JPanel panel = new JPanel();
-        panel.setLayout(null);
+        JPanel panel = new JPanel(null);
 
         JLabel titleLabel = new JLabel("Ajouter une entrée", SwingConstants.CENTER);
         titleLabel.setFont(new Font("Dialog", Font.BOLD, 22));
-        titleLabel.setBounds(0, 20, 600, 30);
+        titleLabel.setBounds(0, 20, 650, 30);
         panel.add(titleLabel);
 
-        // Website field
         JLabel siteLabel = new JLabel("Site Web :");
         siteLabel.setBounds(50, 80, 100, 30);
         panel.add(siteLabel);
         JTextField siteInput = new JTextField();
-        siteInput.setBounds(160, 80, 350, 30);
+        siteInput.setBounds(160, 80, 380, 30);
         panel.add(siteInput);
 
-        // ID field
         JLabel userInput = new JLabel("Identifiant / Email :");
         userInput.setBounds(50, 130, 120, 30);
         panel.add(userInput);
         JTextField usernameInput = new JTextField();
-        usernameInput.setBounds(160, 130, 350, 30);
+        usernameInput.setBounds(160, 130, 380, 30);
         panel.add(usernameInput);
 
-        // Password field
         JLabel passLabel = new JLabel("Mot de passe :");
         passLabel.setBounds(50, 180, 100, 30);
         panel.add(passLabel);
         JTextField passwordInput = new JTextField();
-        passwordInput.setBounds(160, 180, 230, 30);
+        passwordInput.setBounds(160, 180, 250, 30);
         panel.add(passwordInput);
 
-        // Button to open the old password generator in a pop-up
         JButton generatePopupCtx = new JButton("Générer");
-        generatePopupCtx.setBounds(400, 180, 110, 30);
+        generatePopupCtx.setBounds(420, 180, 120, 30);
         generatePopupCtx.addActionListener(e -> {
-            // We open a JDialog (blocking secondary window)
-            JDialog genDialog = new JDialog(PasswordManagerGUI.this, "Générateur", true);
+            JDialog genDialog = new JDialog(this, "Générateur", true);
             genDialog.setSize(400, 450);
             genDialog.setLayout(null);
-            genDialog.setLocationRelativeTo(PasswordManagerGUI.this);
+            genDialog.setLocationRelativeTo(this);
 
-            // Simplified and compact version of the old graphical interface
             JLabel lenLabel = new JLabel("Longueur :");
             lenLabel.setBounds(30, 30, 100, 30);
             genDialog.add(lenLabel);
@@ -221,13 +388,12 @@ public class PasswordManagerGUI extends JFrame {
             });
             genDialog.add(btnGen);
 
-            // Button to validate and inject the password into the main form
             JButton btnAccept = new JButton("Utiliser");
             btnAccept.setBounds(210, 320, 140, 35);
             btnAccept.addActionListener(evt -> {
                 if (!resOutput.getText().isEmpty()) {
                     passwordInput.setText(resOutput.getText());
-                    genDialog.dispose(); // Close the pop up
+                    genDialog.dispose();
                 }
             });
             genDialog.add(btnAccept);
@@ -236,9 +402,8 @@ public class PasswordManagerGUI extends JFrame {
         });
         panel.add(generatePopupCtx);
 
-        // Save button
         JButton saveButton = new JButton("Enregistrer");
-        saveButton.setBounds(160, 260, 150, 40);
+        saveButton.setBounds(180, 260, 140, 40);
         saveButton.setFont(new Font("Dialog", Font.BOLD, 14));
         saveButton.addActionListener(e -> {
             String site = siteInput.getText().trim();
@@ -250,95 +415,132 @@ public class PasswordManagerGUI extends JFrame {
                 return;
             }
 
-            // Adding to the test database
             fakeDatabase.add(new PasswordEntry(site, user, pass));
             saveVault();
             refreshDashboardDisplay();
 
-            // Nettoyage du formulaire
             siteInput.setText("");
             usernameInput.setText("");
             passwordInput.setText("");
 
-            // Retour au coffre-fort
             cardLayout.show(mainPanel, "DASHBOARD");
         });
         panel.add(saveButton);
 
-        // Cancel button
         JButton cancelButton = new JButton("Annuler");
-        cancelButton.setBounds(340, 260, 150, 40);
+        cancelButton.setBounds(340, 260, 140, 40);
         cancelButton.addActionListener(e -> cardLayout.show(mainPanel, "DASHBOARD"));
         panel.add(cancelButton);
 
         return panel;
     }
 
-    public void showFormScreen() {
-        cardLayout.show(mainPanel, "FORM");
-    }
-
+    // --- VAULT BACKUP & DECRYPTION ---
     public void saveVault() {
         try {
-            // Automatically create the file if it is missing.
             File file = new File(FILE_NAME);
             if (file.getParentFile() != null && !file.getParentFile().exists()) {
                 file.getParentFile().mkdirs();
             }
 
+            // 1. We prepare the passwords to be encrypted
             StringBuilder sb = new StringBuilder();
-            // Separate each field with a special character (e.g., "|||") and each account with a line
             for (PasswordEntry entry : fakeDatabase) {
                 sb.append(entry.getWebsite()).append("|||")
                         .append(entry.getUsername()).append("|||")
                         .append(entry.getPassword()).append("\n");
             }
 
-            // If the list is empty, we store an empty string
-            String plainText = sb.toString();
+            // 2. AES-256 encryption only for the password list
+            String cipherText = CryptoUtils.encrypt(sb.toString(), currentMasterPassword);
 
-            // AES-256 encryption with current master password
-            String cipherText = CryptoUtils.encrypt(plainText, currentMasterPassword);
-
-            // Writing to the local vault.enc file
+            // 3. Writing: Metadata (Login + Key) on the first line, then the encrypted block
             try (PrintWriter out = new PrintWriter(FILE_NAME)) {
-                out.print(cipherText);
+                out.println(currentLogin + "|||" + currentRecoveryKey); // Control Header
+                out.print(cipherText); // Encrypted content
+            } catch (Exception e) {
+                throw new RuntimeException(e);
             }
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this, "Erreur lors de la sauvegarde : " + e.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
         }
     }
-
-    // Read and decrypt the file at startup
-    private boolean loadVault(String masterPassword) {
+    private boolean loadVault(String login, String masterPassword) {
         File file = new File(FILE_NAME);
-        if (!file.exists()) {
-            // If the file does not yet exist (first use), we initialize a blank list
-            fakeDatabase = new ArrayList<>();
-            return true;
-        }
+        if (!file.exists()) return false;
 
-        try {
-            // Read the file’s encrypted (Base64) content
-            String cipherText = new Scanner(file).useDelimiter("\\Z").next();
+        try (Scanner scanner = new Scanner(file)) {
+            if (!scanner.hasNextLine()) return false;
 
-            // Try to decrypt with the provided password
+            // 1. Verification of the login in the header
+            String headerLine = scanner.nextLine();
+            String[] parts = headerLine.split("\\|\\|\\|");
+            if (parts.length < 2) return false;
+
+            String savedLogin = parts[0].trim();
+            String savedKey = parts[1].trim();
+
+            if (!savedLogin.equalsIgnoreCase(login.trim())) {
+                return false; // Incorrect ID
+            }
+
+            // 2. Reading the rest of the file (the encrypted block)
+            StringBuilder cipherTextBuilder = new StringBuilder();
+            while (scanner.hasNextLine()) {
+                cipherTextBuilder.append(scanner.nextLine()).append("\n");
+            }
+
+            String cipherText = cipherTextBuilder.toString().trim();
+            if (cipherText.isEmpty()) {
+                // Empty vault but correct username/password
+                this.currentRecoveryKey = savedKey;
+                this.fakeDatabase = new ArrayList<>();
+                return true;
+            }
+
+            // 3. Decryption with the master password
             String plainText = CryptoUtils.decrypt(cipherText, masterPassword);
 
-            fakeDatabase = new ArrayList<>();
-            if (!plainText.trim().isEmpty()) {
+            ArrayList<PasswordEntry> loadedData = new ArrayList<>();
+            if (!plainText.isEmpty()) {
                 String[] lines = plainText.split("\n");
                 for (String line : lines) {
-                    String[] parts = line.split("\\|\\|\\|");
-                    if (parts.length == 3) {
-                        fakeDatabase.add(new PasswordEntry(parts[0], parts[1], parts[2]));
+                    String[] data = line.split("\\|\\|\\|");
+                    if (data.length == 3) {
+                        loadedData.add(new PasswordEntry(data[0], data[1], data[2]));
                     }
                 }
             }
-            return true; // Decryption successful
+
+            this.currentRecoveryKey = savedKey;
+            this.fakeDatabase = loadedData;
+            return true; // Successful login
         } catch (Exception e) {
-            // If the password is false or the file is corrupted, an exception is raised
-            return false;
+            return false; // Incorrect master password
         }
+    }
+
+    private boolean loadVaultWithKey(String login, String recoveryKey) {
+        File file = new File(FILE_NAME);
+        if (!file.exists()) return false;
+
+        try (Scanner scanner = new Scanner(file)) {
+            if (!scanner.hasNextLine()) return false;
+
+            // Reading the first line (Header: Login|||Key)
+            String headerLine = scanner.nextLine();
+            String[] parts = headerLine.split("\\|\\|\\|");
+
+            if (parts.length >= 2) {
+                String savedLogin = parts[0].trim();
+                String savedKey = parts[1].trim();
+
+                // Direct verification of the login and backup key
+                return savedLogin.equalsIgnoreCase(login.trim()) && savedKey.equals(recoveryKey.trim());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 }
