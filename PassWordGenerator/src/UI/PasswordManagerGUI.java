@@ -18,12 +18,12 @@ public class PasswordManagerGUI extends JFrame {
     private CardLayout cardLayout;
     private JPanel mainPanel;
     private String currentMasterPassword = "";
-    private final String FILE_NAME = "vault.enc";
+    private final String FILE_NAME = System.getProperty("user.home") + File.separator + ".vaultjar" + File.separator + "vault.enc";
 
     // Test data
     private ArrayList<PasswordEntry> fakeDatabase;
 
-    private JTextArea displayArea;
+    private DashboardPanel dashboardPanel;
     private PasswordGenerator passwordGenerator;
 
     public PasswordManagerGUI() {
@@ -31,7 +31,6 @@ public class PasswordManagerGUI extends JFrame {
         setSize(600, 500);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
-        setResizable(false);
 
         fakeDatabase = new ArrayList<>();
 
@@ -42,7 +41,7 @@ public class PasswordManagerGUI extends JFrame {
 
         // Creation of the 3 screens
         JPanel loginPanel = createLoginPanel();
-        JPanel dashboardPanel = createDashboardPanel();
+        this.dashboardPanel = new DashboardPanel(this);
         JPanel formPanel = createFormPanel();
 
         mainPanel.add(loginPanel, "LOGIN");
@@ -61,15 +60,10 @@ public class PasswordManagerGUI extends JFrame {
     }
 
     // Updates the text of the displayed table
-    private void refreshDashboardDisplay() {
-        StringBuilder sb = new StringBuilder();
-        sb.append(String.format("%-15s | %-25s | %-20s\n", "Site", "Identifiant", "Mot de passe"));
-        sb.append("------------------------------------------------------------------\n");
-        for (PasswordEntry entry : fakeDatabase) {
-            sb.append(String.format("%-15s | %-25s | %-20s\n",
-                    entry.getWebsite(), entry.getUsername(), entry.getPassword()));
+    public void refreshDashboardDisplay() {
+        if (dashboardPanel != null) {
+            dashboardPanel.loadDataIntoTable(fakeDatabase);
         }
-        displayArea.setText(sb.toString());
     }
 
     // -- SCREEN 1: LOGIN ---
@@ -134,37 +128,6 @@ public class PasswordManagerGUI extends JFrame {
             }
         });
         panel.add(loginButton);
-
-        return panel;
-    }
-
-    // -- SCREEN 2: THE SAFE ---
-    private JPanel createDashboardPanel() {
-        JPanel panel = new JPanel();
-        panel.setLayout(null);
-
-        JLabel titleLabel = new JLabel("Mon Coffre-fort", SwingConstants.CENTER);
-        titleLabel.setFont(new Font("Dialog", Font.BOLD, 24));
-        titleLabel.setBounds(0, 20, 600, 40);
-        panel.add(titleLabel);
-
-        displayArea = new JTextArea();
-        displayArea.setEditable(false);
-        displayArea.setFont(new Font("Monospaced", Font.PLAIN, 14));
-
-        // First display of false data
-        refreshDashboardDisplay();
-
-        JScrollPane scrollPane = new JScrollPane(displayArea);
-        scrollPane.setBounds(30, 80, 520, 250);
-        panel.add(scrollPane);
-
-        // Button to go to the addition form
-        JButton goToAddButton = new JButton("Ajouter un nouveau mot de passe");
-        goToAddButton.setBounds(150, 360, 300, 40);
-        goToAddButton.setFont(new Font("Dialog", Font.BOLD, 14));
-        goToAddButton.addActionListener(e -> cardLayout.show(mainPanel, "FORM"));
-        panel.add(goToAddButton);
 
         return panel;
     }
@@ -311,8 +274,18 @@ public class PasswordManagerGUI extends JFrame {
         return panel;
     }
 
-    private void saveVault() {
+    public void showFormScreen() {
+        cardLayout.show(mainPanel, "FORM");
+    }
+
+    public void saveVault() {
         try {
+            // Automatically create the file if it is missing.
+            File file = new File(FILE_NAME);
+            if (file.getParentFile() != null && !file.getParentFile().exists()) {
+                file.getParentFile().mkdirs();
+            }
+
             StringBuilder sb = new StringBuilder();
             // Separate each field with a special character (e.g., "|||") and each account with a line
             for (PasswordEntry entry : fakeDatabase) {
