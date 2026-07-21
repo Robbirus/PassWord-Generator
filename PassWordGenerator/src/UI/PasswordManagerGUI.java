@@ -16,6 +16,8 @@ public class PasswordManagerGUI extends JFrame {
 
     private CardLayout cardLayout;
     private JPanel mainPanel;
+    private JTabbedPane tabbedPane;
+
     private String currentMasterPassword = "";
     private String currentLogin = "";
     private String currentRecoveryKey = "";
@@ -37,24 +39,38 @@ public class PasswordManagerGUI extends JFrame {
         cardLayout = new CardLayout();
         mainPanel = new JPanel(cardLayout);
 
-        // Vérification de l'existence du coffre-fort pour déterminer l'écran initial
+        // Verification of the existence of the safe
         File vaultFile = new File(FILE_NAME);
         boolean vaultExists = vaultFile.exists();
 
         JPanel authPanel = vaultExists ? createLoginPanel() : createRegisterPanel();
+
+        // Initializing Tab Components
         this.dashboardPanel = new DashboardPanel(this);
+        SettingsPanel settingsPanel = new SettingsPanel(this.dashboardPanel);
         JPanel formPanel = createFormPanel();
 
+        // Creating the tab bar
+        this.tabbedPane = new JTabbedPane();
+        this.tabbedPane.addTab("🔑 Mon Coffre-fort", dashboardPanel);
+        this.tabbedPane.addTab("➕ Ajouter", formPanel);
+        this.tabbedPane.addTab("⚙️ Options", settingsPanel);
+
+        // Adding main views to CardLayout
         mainPanel.add(authPanel, "AUTH");
-        mainPanel.add(dashboardPanel, "DASHBOARD");
-        mainPanel.add(formPanel, "FORM");
+        mainPanel.add(tabbedPane, "DASHBOARD");
 
         add(mainPanel);
         cardLayout.show(mainPanel, "AUTH");
     }
 
     public void showFormScreen() {
-        cardLayout.show(mainPanel, "FORM");
+        // 1. Switches to the main view
+        cardLayout.show(mainPanel, "DASHBOARD");
+        // 2. Select tab 1 ("➕ Add")
+        if (tabbedPane != null) {
+            tabbedPane.setSelectedIndex(1);
+        }
     }
 
     public void refreshDashboardDisplay() {
@@ -115,7 +131,6 @@ public class PasswordManagerGUI extends JFrame {
                 return;
             }
 
-            // Generation of the backup key and mandatory registration
             String key = RecoveryKeyManager.generateKey();
             boolean saved = promptSaveRecoveryKey(login, key);
 
@@ -125,7 +140,7 @@ public class PasswordManagerGUI extends JFrame {
                 this.currentRecoveryKey = key;
                 this.fakeDatabase = new ArrayList<>();
 
-                saveVault(); // Creation of the initial encrypted file
+                saveVault();
                 refreshDashboardDisplay();
                 cardLayout.show(mainPanel, "DASHBOARD");
             } else {
@@ -183,7 +198,6 @@ public class PasswordManagerGUI extends JFrame {
         });
         panel.add(btnLogin);
 
-        // Recovery Mode Button (Forgot Password)
         JButton btnRecovery = new JButton("Mot de passe oublié ? Utiliser la clé de secours");
         btnRecovery.setBounds(150, 310, 350, 30);
         btnRecovery.addActionListener(e -> openRecoveryDialog());
@@ -274,7 +288,6 @@ public class PasswordManagerGUI extends JFrame {
         dialog.setVisible(true);
     }
 
-    // Master Password Reset after Recovery
     private void promptNewPasswordAfterRecovery(String login) {
         JPasswordField p1 = new JPasswordField();
         JPasswordField p2 = new JPasswordField();
@@ -295,7 +308,7 @@ public class PasswordManagerGUI extends JFrame {
                     this.currentMasterPassword = newPass;
                     this.currentRecoveryKey = newKey;
 
-                    saveVault(); // Save with the new password and the new key
+                    saveVault();
                     refreshDashboardDisplay();
                     cardLayout.show(mainPanel, "DASHBOARD");
                     JOptionPane.showMessageDialog(this, "Mot de passe maître réinitialisé avec succès !");
@@ -423,13 +436,25 @@ public class PasswordManagerGUI extends JFrame {
             usernameInput.setText("");
             passwordInput.setText("");
 
-            cardLayout.show(mainPanel, "DASHBOARD");
+            // Navigation vers le 1er onglet (Coffre-fort)
+            if (tabbedPane != null) {
+                tabbedPane.setSelectedIndex(0);
+            }
         });
         panel.add(saveButton);
 
         JButton cancelButton = new JButton("Annuler");
         cancelButton.setBounds(340, 260, 140, 40);
-        cancelButton.addActionListener(e -> cardLayout.show(mainPanel, "DASHBOARD"));
+        cancelButton.addActionListener(e -> {
+            siteInput.setText("");
+            usernameInput.setText("");
+            passwordInput.setText("");
+
+            // Navigation vers le 1er onglet (Coffre-fort)
+            if (tabbedPane != null) {
+                tabbedPane.setSelectedIndex(0);
+            }
+        });
         panel.add(cancelButton);
 
         return panel;
@@ -443,7 +468,6 @@ public class PasswordManagerGUI extends JFrame {
                 file.getParentFile().mkdirs();
             }
 
-            // 1. We prepare the passwords to be encrypted
             StringBuilder sb = new StringBuilder();
             for (PasswordEntry entry : fakeDatabase) {
                 sb.append(entry.getWebsite()).append("|||")
@@ -451,13 +475,11 @@ public class PasswordManagerGUI extends JFrame {
                         .append(entry.getPassword()).append("\n");
             }
 
-            // 2. AES-256 encryption only for the password list
             String cipherText = CryptoUtils.encrypt(sb.toString(), currentMasterPassword);
 
-            // 3. Writing: Metadata (Login + Key) on the first line, then the encrypted block
             try (PrintWriter out = new PrintWriter(FILE_NAME)) {
-                out.println(currentLogin + "|||" + currentRecoveryKey); // Control Header
-                out.print(cipherText); // Encrypted content
+                out.println(currentLogin + "|||" + currentRecoveryKey);
+                out.print(cipherText);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
@@ -465,6 +487,7 @@ public class PasswordManagerGUI extends JFrame {
             JOptionPane.showMessageDialog(this, "Erreur lors de la sauvegarde : " + e.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
         }
     }
+
     private boolean loadVault(String login, String masterPassword) {
         File file = new File(FILE_NAME);
         if (!file.exists()) return false;
@@ -472,7 +495,6 @@ public class PasswordManagerGUI extends JFrame {
         try (Scanner scanner = new Scanner(file)) {
             if (!scanner.hasNextLine()) return false;
 
-            // 1. Verification of the login in the header
             String headerLine = scanner.nextLine();
             String[] parts = headerLine.split("\\|\\|\\|");
             if (parts.length < 2) return false;
@@ -481,10 +503,9 @@ public class PasswordManagerGUI extends JFrame {
             String savedKey = parts[1].trim();
 
             if (!savedLogin.equalsIgnoreCase(login.trim())) {
-                return false; // Incorrect ID
+                return false;
             }
 
-            // 2. Reading the rest of the file (the encrypted block)
             StringBuilder cipherTextBuilder = new StringBuilder();
             while (scanner.hasNextLine()) {
                 cipherTextBuilder.append(scanner.nextLine()).append("\n");
@@ -492,13 +513,11 @@ public class PasswordManagerGUI extends JFrame {
 
             String cipherText = cipherTextBuilder.toString().trim();
             if (cipherText.isEmpty()) {
-                // Empty vault but correct username/password
                 this.currentRecoveryKey = savedKey;
                 this.fakeDatabase = new ArrayList<>();
                 return true;
             }
 
-            // 3. Decryption with the master password
             String plainText = CryptoUtils.decrypt(cipherText, masterPassword);
 
             ArrayList<PasswordEntry> loadedData = new ArrayList<>();
@@ -514,9 +533,9 @@ public class PasswordManagerGUI extends JFrame {
 
             this.currentRecoveryKey = savedKey;
             this.fakeDatabase = loadedData;
-            return true; // Successful login
+            return true;
         } catch (Exception e) {
-            return false; // Incorrect master password
+            return false;
         }
     }
 
@@ -527,7 +546,6 @@ public class PasswordManagerGUI extends JFrame {
         try (Scanner scanner = new Scanner(file)) {
             if (!scanner.hasNextLine()) return false;
 
-            // Reading the first line (Header: Login|||Key)
             String headerLine = scanner.nextLine();
             String[] parts = headerLine.split("\\|\\|\\|");
 
@@ -535,7 +553,6 @@ public class PasswordManagerGUI extends JFrame {
                 String savedLogin = parts[0].trim();
                 String savedKey = parts[1].trim();
 
-                // Direct verification of the login and backup key
                 return savedLogin.equalsIgnoreCase(login.trim()) && savedKey.equals(recoveryKey.trim());
             }
         } catch (Exception e) {

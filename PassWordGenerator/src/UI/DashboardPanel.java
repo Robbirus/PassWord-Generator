@@ -1,6 +1,7 @@
 package UI;
 
 import model.PasswordEntry;
+import crypto.ClipboardUtils;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -25,7 +26,7 @@ public class DashboardPanel extends JPanel {
         setLayout(new BorderLayout(10, 10));
         setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-        // -- TOP: Search bar ---
+        // --- TOP: Search bar ---
         JPanel topPanel = new JPanel(new BorderLayout(5, 5));
         topPanel.add(new JLabel("Rechercher un site : "), BorderLayout.WEST);
 
@@ -34,10 +35,9 @@ public class DashboardPanel extends JPanel {
         add(topPanel, BorderLayout.NORTH);
 
         // --- CENTER: The Table ---
-        // Definition of the columns
         String[] columns = {"Nom du Site", "Identifiant / Login", "Mot de passe", "Date d'ajout"};
 
-        // The model manages the data. Direct editing of cells by double-clicking is prohibited.
+        // Table Template: Direct double-click edit is prohibited
         tableModel = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -48,11 +48,13 @@ public class DashboardPanel extends JPanel {
         table = new JTable(tableModel);
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
-        // Automatic Sort
+        // Cursor in the form of a hand when hovering over the table to indicate interactivity
+        table.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+
+        // Automatic sorting of columns
         sorter = new TableRowSorter<>(tableModel);
         table.setRowSorter(sorter);
 
-        // We place the table in a JScrollPane so that we can scroll if necessary.
         JScrollPane scrollPane = new JScrollPane(table);
         add(scrollPane, BorderLayout.CENTER);
 
@@ -67,40 +69,68 @@ public class DashboardPanel extends JPanel {
         bottomPanel.add(btnDelete);
         add(bottomPanel, BorderLayout.SOUTH);
 
-        // --- FEATURES LOGIC ---
+        // --- CLICK MANAGEMENT / QUICK ONE-CLICK COPY ---
+        table.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                int row = table.getSelectedRow();
+                int col = table.getSelectedColumn();
 
-        // Real-time filtering when typing in the search bar
+                if (row != -1 && col != -1) {
+                    // Convert the visual index into a real index of the model (essential if filtered/trié)
+                    int modelRow = table.convertRowIndexToModel(row);
+
+                    // Clic on the Identifier column (index 1)
+                    if (col == 1) {
+                        String username = (String) tableModel.getValueAt(modelRow, col);
+                        ClipboardUtils.copyToClipboardWithTimeout(username, 30);
+                        JOptionPane.showMessageDialog(DashboardPanel.this,
+                                "Identifiant copié !",
+                                "Presse-papier", JOptionPane.INFORMATION_MESSAGE);
+                    }
+                    // Clic sur la colonne Mot de passe (index 2)
+                    else if (col == 2) {
+                        String password = (String) tableModel.getValueAt(modelRow, col);
+                        ClipboardUtils.copyToClipboardWithTimeout(password, 30);
+                        JOptionPane.showMessageDialog(DashboardPanel.this,
+                                "Mot de passe copié ! (Effacement automatique dans 30s)",
+                                "Presse-papier", JOptionPane.INFORMATION_MESSAGE);
+                    }
+                }
+            }
+        });
+
+        // --- SEARCH LOGIC ---
         searchField.addKeyListener(new KeyAdapter() {
             @Override
             public void keyReleased(KeyEvent e) {
                 String text = searchField.getText();
                 if (text.trim().length() == 0) {
-                    sorter.setRowFilter(null); // No filter if the field is empty
+                    sorter.setRowFilter(null);
                 } else {
-                    // Case-insensitive filter (?i) on column 0 (the Site Name)
                     sorter.setRowFilter(RowFilter.regexFilter("(?i)" + text, 0));
                 }
             }
         });
 
-        // Navigation vers le formulaire d'ajout existant
-        btnAdd.addActionListener(e -> {mainFrame.showFormScreen(); });
+        // Navigating to the add form
+        btnAdd.addActionListener(e -> mainFrame.showFormScreen());
 
-        // Delete Button Logic
+        // --- DELETE LOGIC ---
         btnDelete.addActionListener(e -> {
             int selectedRow = table.getSelectedRow();
-            if (selectedRow != -indexUnfounded()) {
-                // Warning: with sorting/filtering, the visual index can differ from the actual model index
+            if (selectedRow != -1) { // Correction de la vérification de sélection
                 int modelRow = table.convertRowIndexToModel(selectedRow);
 
-                // 1. Remove from view
+                // 1. Deleting from View
                 tableModel.removeRow(modelRow);
 
-                // 2. Delete from database
+                // 2. Delete from Data List
                 if (currentDatabase != null && modelRow < currentDatabase.size()) {
                     currentDatabase.remove(modelRow);
                 }
-                // 3. Save vault
+
+                // 3. Backup the vault
                 mainFrame.saveVault();
 
                 JOptionPane.showMessageDialog(this, "Mot de passe supprimé avec succès !");
@@ -109,38 +139,29 @@ public class DashboardPanel extends JPanel {
             }
         });
 
-        // Logic of the Edit button connected to our Pop-up
+        // --- EDIT LOGIC (POP-UP) ---
         btnEdit.addActionListener(e -> {
             int selectedRow = table.getSelectedRow();
             if (selectedRow != -1) {
                 int modelRow = table.convertRowIndexToModel(selectedRow);
 
-                // 1. We get the current values of the selected line
                 String currentSite = (String) tableModel.getValueAt(modelRow, 0);
                 String currentLogin = (String) tableModel.getValueAt(modelRow, 1);
                 String currentPassword = (String) tableModel.getValueAt(modelRow, 2);
 
-                // 2. We get the parent JFrame to link the pop-up there
                 JFrame topFrame = (JFrame) SwingUtilities.getWindowAncestor(this);
-
-                // 3. We open our pop-up by passing it the current information
                 UpdateDialog dialog = new UpdateDialog(topFrame, currentSite, currentLogin, currentPassword);
-                dialog.setVisible(true); // Le code s'arrête ici tant que l'utilisateur n'a pas fermé la pop-up
+                dialog.setVisible(true);
 
-                // 4. If the user clicked on "Save"
                 if (dialog.isValidated()) {
-                    // We are updating the display of our table.
                     tableModel.setValueAt(dialog.getLogin(), modelRow, 1);
                     tableModel.setValueAt(dialog.getPassword(), modelRow, 2);
 
                     if (currentDatabase != null && modelRow < currentDatabase.size()) {
-                        PasswordEntry entry = currentDatabase.get(modelRow);
-
                         currentDatabase.set(modelRow, new PasswordEntry(currentSite, dialog.getLogin(), dialog.getPassword()));
                     }
 
                     mainFrame.saveVault();
-
                     JOptionPane.showMessageDialog(this, "Mot de passe modifié avec succès !");
                 }
             } else {
@@ -149,14 +170,18 @@ public class DashboardPanel extends JPanel {
         });
     }
 
-    private int indexUnfounded() {
-        return 1;
+    // Adjust the width of columns from the Options tab
+    public void updateColumnWidths(int webWidth, int userWidth) {
+        if (table != null && table.getColumnModel().getColumnCount() >= 2) {
+            table.getColumnModel().getColumn(0).setPreferredWidth(webWidth);
+            table.getColumnModel().getColumn(1).setPreferredWidth(userWidth);
+        }
     }
 
-    // Utility method for filling out your table from your uploaded data
+    // Table filling from the decrypted base
     public void loadDataIntoTable(ArrayList<PasswordEntry> database) {
         this.currentDatabase = database;
-        tableModel.setRowCount(0); // Empty the table before filling it
+        tableModel.setRowCount(0);
 
         if (database != null) {
             for (PasswordEntry entry : database) {
