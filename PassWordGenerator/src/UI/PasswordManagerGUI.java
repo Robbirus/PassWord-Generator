@@ -1,5 +1,8 @@
 package UI;
 
+import com.formdev.flatlaf.FlatDarkLaf;
+import com.formdev.flatlaf.FlatLaf;
+import com.formdev.flatlaf.FlatLightLaf;
 import crypto.CryptoUtils;
 import crypto.PasswordGenerator;
 import crypto.RecoveryKeyManager;
@@ -13,6 +16,8 @@ import java.util.ArrayList;
 import java.util.Scanner;
 
 public class PasswordManagerGUI extends JFrame {
+
+    private SecurityAuditPanel auditPanel;
 
     private CardLayout cardLayout;
     private JPanel mainPanel;
@@ -29,7 +34,11 @@ public class PasswordManagerGUI extends JFrame {
 
     public PasswordManagerGUI() {
         super("Mon Gestionnaire de Mots de Passe");
-        setSize(650, 550);
+
+        // Apply the saved theme to the very first window launch
+        applyTheme();
+
+        setSize(700, 600);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
@@ -47,14 +56,25 @@ public class PasswordManagerGUI extends JFrame {
 
         // Initializing Tab Components
         this.dashboardPanel = new DashboardPanel(this);
-        SettingsPanel settingsPanel = new SettingsPanel(this.dashboardPanel);
+        this.auditPanel = new SecurityAuditPanel();
+        SettingsPanel settingsPanel = new SettingsPanel(this);
+
         JPanel formPanel = createFormPanel();
 
         // Creating the tab bar
         this.tabbedPane = new JTabbedPane();
         this.tabbedPane.addTab("🔑 Mon Coffre-fort", dashboardPanel);
         this.tabbedPane.addTab("➕ Ajouter", formPanel);
+        this.tabbedPane.addTab("🛡️ Audit Sécurité", auditPanel);
         this.tabbedPane.addTab("⚙️ Options", settingsPanel);
+
+        this.tabbedPane.addChangeListener(e -> {
+            int selectedIndex = tabbedPane.getSelectedIndex();
+            // If the user clicks on the Audit tab (index 2)
+            if (selectedIndex == 2 && auditPanel != null) {
+                auditPanel.analyzeVault(fakeDatabase);
+            }
+        });
 
         // Adding main views to CardLayout
         mainPanel.add(authPanel, "AUTH");
@@ -64,18 +84,30 @@ public class PasswordManagerGUI extends JFrame {
         cardLayout.show(mainPanel, "AUTH");
     }
 
-    public void showFormScreen() {
-        // 1. Switches to the main view
-        cardLayout.show(mainPanel, "DASHBOARD");
-        // 2. Select tab 1 ("➕ Add")
-        if (tabbedPane != null) {
-            tabbedPane.setSelectedIndex(1);
-        }
+    public ArrayList<PasswordEntry> getDatabase() {
+        return this.fakeDatabase;
     }
 
     public void refreshDashboardDisplay() {
         if (dashboardPanel != null) {
             dashboardPanel.loadDataIntoTable(fakeDatabase);
+        }
+        if (auditPanel != null) {
+            auditPanel.analyzeVault(fakeDatabase); // <--- L'Audit réanalyse immédiatement la liste nettoyée
+        }
+    }
+
+    public void applyTheme() {
+        try {
+            if (model.AppSettings.isDarkMode()) {
+                UIManager.setLookAndFeel(new com.formdev.flatlaf.FlatDarkLaf());
+            } else {
+                UIManager.setLookAndFeel(new com.formdev.flatlaf.FlatLightLaf());
+            }
+            // Force visual update of the entire window
+            SwingUtilities.updateComponentTreeUI(this);
+        } catch (Exception ex) {
+            System.err.println("Erreur thème : " + ex.getMessage());
         }
     }
 
@@ -138,7 +170,10 @@ public class PasswordManagerGUI extends JFrame {
                 this.currentLogin = login;
                 this.currentMasterPassword = pass;
                 this.currentRecoveryKey = key;
-                this.fakeDatabase = new ArrayList<>();
+                if (this.fakeDatabase == null) {
+                    this.fakeDatabase = new ArrayList<>();
+                }
+                this.fakeDatabase.clear();
 
                 saveVault();
                 refreshDashboardDisplay();
@@ -472,7 +507,8 @@ public class PasswordManagerGUI extends JFrame {
             for (PasswordEntry entry : fakeDatabase) {
                 sb.append(entry.getWebsite()).append("|||")
                         .append(entry.getUsername()).append("|||")
-                        .append(entry.getPassword()).append("\n");
+                        .append(entry.getPassword()).append("|||")
+                        .append(entry.getDateAdded()).append("\n");
             }
 
             String cipherText = CryptoUtils.encrypt(sb.toString(), currentMasterPassword);
@@ -525,14 +561,21 @@ public class PasswordManagerGUI extends JFrame {
                 String[] lines = plainText.split("\n");
                 for (String line : lines) {
                     String[] data = line.split("\\|\\|\\|");
-                    if (data.length == 3) {
-                        loadedData.add(new PasswordEntry(data[0], data[1], data[2]));
+                    if (data.length >= 3) {
+                        String date = (data.length >= 4) ? data[3] : "N/A";
+                        loadedData.add(new PasswordEntry(data[0], data[1], data[2], date));
                     }
                 }
             }
 
             this.currentRecoveryKey = savedKey;
-            this.fakeDatabase = loadedData;
+            if (this.fakeDatabase == null) {
+                this.fakeDatabase = new ArrayList<>();
+            }
+            this.fakeDatabase.clear();
+            if (loadedData != null) {
+                this.fakeDatabase.addAll(loadedData);
+            }
             return true;
         } catch (Exception e) {
             return false;
@@ -559,5 +602,9 @@ public class PasswordManagerGUI extends JFrame {
             e.printStackTrace();
         }
         return false;
+    }
+
+    public ArrayList<PasswordEntry> getFakeDatabase() {
+        return this.fakeDatabase;
     }
 }

@@ -1,82 +1,99 @@
 package UI;
 
+import model.AppSettings;
+
 import javax.swing.*;
 import java.awt.*;
 
 public class SettingsPanel extends JPanel {
 
-    private JSpinner colWebsiteWidthSpinner;
-    private JSpinner colUserWidthSpinner;
-    private JCheckBox autoClearClipboardCb;
-    private DashboardPanel dashboardPanel;
+    private JCheckBox darkModeCb;
+    private JCheckBox showPassCb;
+    private JComboBox<String> autoLockCombo;
+    private JSpinner clipboardSpinner;
 
-    public SettingsPanel(DashboardPanel dashboardPanel) {
-        this.dashboardPanel = dashboardPanel;
-        setLayout(new BorderLayout());
-        setBorder(BorderFactory.createEmptyBorder(20, 30, 20, 30));
+    public SettingsPanel(PasswordManagerGUI mainFrame) {
+        setLayout(new BorderLayout(20, 20));
+        setBorder(BorderFactory.createEmptyBorder(25, 25, 25, 25));
 
-        // Panneau vertical pour empiler les sections
-        JPanel contentPanel = new JPanel();
-        contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
+        JLabel title = new JLabel("Paramètres de l'application", SwingConstants.CENTER);
+        title.setFont(new Font("Dialog", Font.BOLD, 20));
+        add(title, BorderLayout.NORTH);
 
-        // --- SECTION 1 : Personnalisation de l'IHM ---
-        JPanel uiGroup = createCategoryPanel("Affichage & Colonnes");
+        JPanel formPanel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(10, 10, 10, 10);
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
 
-        uiGroup.add(new JLabel("Largeur min. colonne Site Web (px) :"));
-        colWebsiteWidthSpinner = new JSpinner(new SpinnerNumberModel(150, 80, 400, 10));
-        uiGroup.add(colWebsiteWidthSpinner);
+        int row = 0;
 
-        uiGroup.add(Box.createVerticalStrut(10));
+        // 1. Hiding Passwords
+        showPassCb = new JCheckBox("Afficher les mots de passe en clair par défaut");
+        showPassCb.setSelected(AppSettings.isShowPasswordsByDefault());
+        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
+        formPanel.add(showPassCb, gbc);
 
-        uiGroup.add(new JLabel("Largeur min. colonne Identifiant (px) :"));
-        colUserWidthSpinner = new JSpinner(new SpinnerNumberModel(150, 80, 400, 10));
-        uiGroup.add(colUserWidthSpinner);
+        // 2. Dark Mode
+        darkModeCb = new JCheckBox("Activer le Mode Sombre (FlatLaf)");
+        darkModeCb.setSelected(AppSettings.isDarkMode());
+        gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
+        formPanel.add(darkModeCb, gbc);
 
-        contentPanel.add(uiGroup);
-        contentPanel.add(Box.createVerticalStrut(20));
+        // 3. Auto-lock
+        gbc.gridwidth = 1; gbc.gridx = 0; gbc.gridy = row;
+        formPanel.add(new JLabel("Verrouillage automatique :"), gbc);
 
-        // --- SECTION 2 : Sécurité & Presse-papier ---
-        JPanel secGroup = createCategoryPanel("Sécurité");
+        String[] lockOptions = {"Désactivé", "1 minute", "5 minutes", "15 minutes", "30 minutes"};
+        autoLockCombo = new JComboBox<>(lockOptions);
+        int lockMin = AppSettings.getAutoLockMinutes();
+        if (lockMin == 1) autoLockCombo.setSelectedIndex(1);
+        else if (lockMin == 5) autoLockCombo.setSelectedIndex(2);
+        else if (lockMin == 15) autoLockCombo.setSelectedIndex(3);
+        else if (lockMin == 30) autoLockCombo.setSelectedIndex(4);
+        else autoLockCombo.setSelectedIndex(0);
 
-        autoClearClipboardCb = new JCheckBox("Vider automatiquement le presse-papier après 30s", true);
-        secGroup.add(autoClearClipboardCb);
+        gbc.gridx = 1;
+        formPanel.add(autoLockCombo, gbc);
+        row++;
 
-        contentPanel.add(secGroup);
-        contentPanel.add(Box.createVerticalStrut(20));
+        // 4. Clipboard Dump
+        gbc.gridx = 0; gbc.gridy = row;
+        formPanel.add(new JLabel("Délai de vidage du presse-papier (sec) :"), gbc);
 
-        // --- BOUTON DE SAUVEGARDE DES OPTIONS ---
-        JButton btnSave = new JButton("Appliquer les paramètres");
+        SpinnerNumberModel spinnerModel = new SpinnerNumberModel(AppSettings.getClearClipboardDelay(), 5, 120, 5);
+        clipboardSpinner = new JSpinner(spinnerModel);
+        gbc.gridx = 1;
+        formPanel.add(clipboardSpinner, gbc);
+
+        add(formPanel, BorderLayout.CENTER);
+
+        JButton btnSave = new JButton("💾 Enregistrer les préférences");
         btnSave.setFont(new Font("Dialog", Font.BOLD, 14));
-        btnSave.setAlignmentX(Component.LEFT_ALIGNMENT);
-        btnSave.addActionListener(e -> applySettings());
+        btnSave.addActionListener(e -> {
+            // Backup in API Preferences
+            AppSettings.setShowPasswordsByDefault(showPassCb.isSelected());
+            AppSettings.setDarkMode(darkModeCb.isSelected());
 
-        contentPanel.add(btnSave);
+            int minutes = switch (autoLockCombo.getSelectedIndex()) {
+                case 1 -> 1;
+                case 2 -> 5;
+                case 3 -> 15;
+                case 4 -> 30;
+                default -> 0;
+            };
+            AppSettings.setAutoLockMinutes(minutes);
+            AppSettings.setClearClipboardDelay((int) clipboardSpinner.getValue());
 
-        add(new JScrollPane(contentPanel), BorderLayout.CENTER);
-    }
+            // Redesign the global UI with the new theme and reload the table columns
+            mainFrame.applyTheme();
+            mainFrame.refreshDashboardDisplay();
 
-    private JPanel createCategoryPanel(String title) {
-        JPanel panel = new JPanel();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBorder(BorderFactory.createTitledBorder(
-                BorderFactory.createEtchedBorder(), title, 0, 0, new Font("Dialog", Font.BOLD, 14)));
-        panel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        return panel;
-    }
+            JOptionPane.showMessageDialog(this, "Paramètres enregistrés et appliqués !", "Succès", JOptionPane.INFORMATION_MESSAGE);
+        });
 
-    private void applySettings() {
-        int webWidth = (int) colWebsiteWidthSpinner.getValue();
-        int userWidth = (int) colUserWidthSpinner.getValue();
-
-        // Application directe des largeurs au tableau
-        if (dashboardPanel != null) {
-            dashboardPanel.updateColumnWidths(webWidth, userWidth);
-        }
-
-        JOptionPane.showMessageDialog(this, "Paramètres enregistrés !", "Succès", JOptionPane.INFORMATION_MESSAGE);
-    }
-
-    public boolean isAutoClearClipboardEnabled() {
-        return autoClearClipboardCb.isSelected();
+        JPanel southPanel = new JPanel();
+        southPanel.add(btnSave);
+        add(southPanel, BorderLayout.SOUTH);
     }
 }

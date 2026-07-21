@@ -1,43 +1,31 @@
 package UI;
 
+import crypto.PasswordGenerator;
+import model.AppSettings;
 import model.PasswordEntry;
-import crypto.ClipboardUtils;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
-import javax.swing.table.TableRowSorter;
 import java.awt.*;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
+import java.awt.datatransfer.StringSelection;
 import java.util.ArrayList;
 
 public class DashboardPanel extends JPanel {
 
     private JTable table;
     private DefaultTableModel tableModel;
-    private TableRowSorter<DefaultTableModel> sorter;
-    private JTextField searchField;
     private PasswordManagerGUI mainFrame;
-    private ArrayList<PasswordEntry> currentDatabase;
 
     public DashboardPanel(PasswordManagerGUI mainFrame) {
         this.mainFrame = mainFrame;
-
         setLayout(new BorderLayout(10, 10));
-        setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
 
-        // --- TOP: Search bar ---
-        JPanel topPanel = new JPanel(new BorderLayout(5, 5));
-        topPanel.add(new JLabel("Rechercher un site : "), BorderLayout.WEST);
+        JLabel titleLabel = new JLabel("Mon Coffre-fort de Mots de Passe", SwingConstants.CENTER);
+        titleLabel.setFont(new Font("Dialog", Font.BOLD, 20));
+        add(titleLabel, BorderLayout.NORTH);
 
-        searchField = new JTextField();
-        topPanel.add(searchField, BorderLayout.CENTER);
-        add(topPanel, BorderLayout.NORTH);
-
-        // --- CENTER: The Table ---
-        String[] columns = {"Nom du Site", "Identifiant / Login", "Mot de passe", "Date d'ajout"};
-
-        // Table Template: Direct double-click edit is prohibited
+        String[] columns = {"Site Web", "Identifiant", "Mot de Passe", "Date d'ajout"};
         tableModel = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -46,146 +34,138 @@ public class DashboardPanel extends JPanel {
         };
 
         table = new JTable(tableModel);
-        table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-
-        // Cursor in the form of a hand when hovering over the table to indicate interactivity
-        table.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-
-        // Automatic sorting of columns
-        sorter = new TableRowSorter<>(tableModel);
-        table.setRowSorter(sorter);
-
+        table.setRowHeight(28);
+        table.setFont(new Font("Dialog", Font.PLAIN, 13));
         JScrollPane scrollPane = new JScrollPane(table);
         add(scrollPane, BorderLayout.CENTER);
 
-        // --- BOTTOM : Action Buttons ---
-        JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        JButton btnAdd = new JButton("Ajouter");
-        JButton btnEdit = new JButton("Modifier");
+        JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
+
+        JButton btnCopy = new JButton("Copier");
+        JButton btnEdit = new JButton("✏️ Éditer");
         JButton btnDelete = new JButton("Supprimer");
+        btnDelete.setForeground(new Color(220, 53, 69));
 
-        bottomPanel.add(btnAdd);
-        bottomPanel.add(btnEdit);
-        bottomPanel.add(btnDelete);
-        add(bottomPanel, BorderLayout.SOUTH);
-
-        // --- CLICK MANAGEMENT / QUICK ONE-CLICK COPY ---
-        table.addMouseListener(new java.awt.event.MouseAdapter() {
-            @Override
-            public void mouseClicked(java.awt.event.MouseEvent e) {
-                int row = table.getSelectedRow();
-                int col = table.getSelectedColumn();
-
-                if (row != -1 && col != -1) {
-                    // Convert the visual index into a real index of the model (essential if filtered/trié)
-                    int modelRow = table.convertRowIndexToModel(row);
-
-                    // Clic on the Identifier column (index 1)
-                    if (col == 1) {
-                        String username = (String) tableModel.getValueAt(modelRow, col);
-                        ClipboardUtils.copyToClipboardWithTimeout(username, 30);
-                        JOptionPane.showMessageDialog(DashboardPanel.this,
-                                "Identifiant copié !",
-                                "Presse-papier", JOptionPane.INFORMATION_MESSAGE);
-                    }
-                    // Clic sur la colonne Mot de passe (index 2)
-                    else if (col == 2) {
-                        String password = (String) tableModel.getValueAt(modelRow, col);
-                        ClipboardUtils.copyToClipboardWithTimeout(password, 30);
-                        JOptionPane.showMessageDialog(DashboardPanel.this,
-                                "Mot de passe copié ! (Effacement automatique dans 30s)",
-                                "Presse-papier", JOptionPane.INFORMATION_MESSAGE);
-                    }
-                }
-            }
-        });
-
-        // --- SEARCH LOGIC ---
-        searchField.addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyReleased(KeyEvent e) {
-                String text = searchField.getText();
-                if (text.trim().length() == 0) {
-                    sorter.setRowFilter(null);
-                } else {
-                    sorter.setRowFilter(RowFilter.regexFilter("(?i)" + text, 0));
-                }
-            }
-        });
-
-        // Navigating to the add form
-        btnAdd.addActionListener(e -> mainFrame.showFormScreen());
-
-        // --- DELETE LOGIC ---
-        btnDelete.addActionListener(e -> {
+        // --- ACTION : COPIER ---
+        btnCopy.addActionListener(e -> {
             int selectedRow = table.getSelectedRow();
-            if (selectedRow != -1) { // Correction de la vérification de sélection
+            if (selectedRow != -1) {
                 int modelRow = table.convertRowIndexToModel(selectedRow);
+                PasswordEntry entry = mainFrame.getFakeDatabase().get(modelRow);
 
-                // 1. Deleting from View
-                tableModel.removeRow(modelRow);
-
-                // 2. Delete from Data List
-                if (currentDatabase != null && modelRow < currentDatabase.size()) {
-                    currentDatabase.remove(modelRow);
-                }
-
-                // 3. Backup the vault
-                mainFrame.saveVault();
-
-                JOptionPane.showMessageDialog(this, "Mot de passe supprimé avec succès !");
+                StringSelection selection = new StringSelection(entry.getPassword());
+                Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, null);
+                JOptionPane.showMessageDialog(this, "Mot de passe copié dans le presse-papier !");
             } else {
-                JOptionPane.showMessageDialog(this, "Veuillez sélectionner une ligne à supprimer.", "Erreur", JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(this, "Veuillez sélectionner une ligne.", "Attention", JOptionPane.WARNING_MESSAGE);
             }
         });
 
-        // --- EDIT LOGIC (POP-UP) ---
+        // --- ACTION : ÉDITER (AVEC GÉNÉRATEUR DEDANS) ---
         btnEdit.addActionListener(e -> {
             int selectedRow = table.getSelectedRow();
             if (selectedRow != -1) {
                 int modelRow = table.convertRowIndexToModel(selectedRow);
+                PasswordEntry entry = mainFrame.getFakeDatabase().get(modelRow);
 
-                String currentSite = (String) tableModel.getValueAt(modelRow, 0);
-                String currentLogin = (String) tableModel.getValueAt(modelRow, 1);
-                String currentPassword = (String) tableModel.getValueAt(modelRow, 2);
+                // Champs de saisie pré-remplis
+                JTextField siteInput = new JTextField(entry.getWebsite(), 20);
+                JTextField userInput = new JTextField(entry.getUsername(), 20);
+                JTextField passInput = new JTextField(entry.getPassword(), 20);
 
-                JFrame topFrame = (JFrame) SwingUtilities.getWindowAncestor(this);
-                UpdateDialog dialog = new UpdateDialog(topFrame, currentSite, currentLogin, currentPassword);
-                dialog.setVisible(true);
+                // Bouton Générateur de mot de passe
+                JButton btnGenerate = new JButton("🎲 Générer");
+                btnGenerate.addActionListener(genEvent -> {
+                    PasswordGenerator generator = new PasswordGenerator();
+                    String newGeneratedPassword = generator.generatePassword(16, true, true, true, true);
+                    passInput.setText(newGeneratedPassword);
+                });
 
-                if (dialog.isValidated()) {
-                    tableModel.setValueAt(dialog.getLogin(), modelRow, 1);
-                    tableModel.setValueAt(dialog.getPassword(), modelRow, 2);
+                // Ligne du mot de passe avec son bouton générateur à côté
+                JPanel passPanel = new JPanel(new BorderLayout(5, 0));
+                passPanel.add(passInput, BorderLayout.CENTER);
+                passPanel.add(btnGenerate, BorderLayout.EAST);
 
-                    if (currentDatabase != null && modelRow < currentDatabase.size()) {
-                        currentDatabase.set(modelRow, new PasswordEntry(currentSite, dialog.getLogin(), dialog.getPassword()));
-                    }
+                // Formulaire d'édition
+                JPanel editForm = new JPanel(new GridLayout(0, 1, 5, 5));
+                editForm.add(new JLabel("Site Web / Application :"));
+                editForm.add(siteInput);
+                editForm.add(new JLabel("Identifiant / Email :"));
+                editForm.add(userInput);
+                editForm.add(new JLabel("Mot de Passe :"));
+                editForm.add(passPanel);
 
+                int result = JOptionPane.showConfirmDialog(
+                        this, editForm, "Modifier le mot de passe",
+                        JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE
+                );
+
+                if (result == JOptionPane.OK_OPTION) {
+                    // Mettre à jour les données de l'objet
+                    entry.setWebsite(siteInput.getText().trim());
+                    entry.setUsername(userInput.getText().trim());
+                    entry.setPassword(passInput.getText().trim());
+
+                    // Sauvegarder sur disque et rafraîchir IHM + Audit
                     mainFrame.saveVault();
-                    JOptionPane.showMessageDialog(this, "Mot de passe modifié avec succès !");
+                    mainFrame.refreshDashboardDisplay();
+
+                    JOptionPane.showMessageDialog(this, "Entrée modifiée avec succès !");
                 }
             } else {
-                JOptionPane.showMessageDialog(this, "Veuillez sélectionner une ligne à modifier.", "Erreur", JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(this, "Veuillez sélectionner une ligne à modifier.", "Attention", JOptionPane.WARNING_MESSAGE);
             }
         });
+
+        // --- ACTION : SUPPRIMER ---
+        btnDelete.addActionListener(e -> {
+            int selectedRow = table.getSelectedRow();
+            if (selectedRow != -1) {
+                int modelRow = table.convertRowIndexToModel(selectedRow);
+                ArrayList<PasswordEntry> db = mainFrame.getFakeDatabase();
+
+                if (modelRow < db.size()) {
+                    PasswordEntry entry = db.get(modelRow);
+
+                    int confirm = JOptionPane.showConfirmDialog(
+                            this,
+                            "Êtes-vous sûr de vouloir supprimer \"" + entry.getWebsite() + "\" ?",
+                            "Confirmation de suppression",
+                            JOptionPane.YES_NO_OPTION,
+                            JOptionPane.WARNING_MESSAGE
+                    );
+
+                    if (confirm == JOptionPane.YES_OPTION) {
+                        db.remove(modelRow);
+                        mainFrame.saveVault();
+                        mainFrame.refreshDashboardDisplay();
+                        JOptionPane.showMessageDialog(this, "Mot de passe supprimé !");
+                    }
+                }
+            } else {
+                JOptionPane.showMessageDialog(this, "Veuillez sélectionner une ligne à supprimer.", "Attention", JOptionPane.WARNING_MESSAGE);
+            }
+        });
+
+        actionPanel.add(btnCopy);
+        actionPanel.add(btnEdit);
+        actionPanel.add(btnDelete);
+        add(actionPanel, BorderLayout.SOUTH);
     }
 
-    // Adjust the width of columns from the Options tab
-    public void updateColumnWidths(int webWidth, int userWidth) {
-        if (table != null && table.getColumnModel().getColumnCount() >= 2) {
-            table.getColumnModel().getColumn(0).setPreferredWidth(webWidth);
-            table.getColumnModel().getColumn(1).setPreferredWidth(userWidth);
-        }
-    }
-
-    // Table filling from the decrypted base
     public void loadDataIntoTable(ArrayList<PasswordEntry> database) {
-        this.currentDatabase = database;
         tableModel.setRowCount(0);
+        boolean showPass = AppSettings.isShowPasswordsByDefault();
 
         if (database != null) {
             for (PasswordEntry entry : database) {
-                tableModel.addRow(new Object[]{entry.getWebsite(), entry.getUsername(), entry.getPassword()});
+                String displayedPassword = showPass ? entry.getPassword() : "••••••••";
+                tableModel.addRow(new Object[]{
+                        entry.getWebsite(),
+                        entry.getUsername(),
+                        displayedPassword,
+                        entry.getDateAdded()
+                });
             }
         }
     }
