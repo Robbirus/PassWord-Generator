@@ -1,6 +1,6 @@
 # 🔐 Gestionnaire de Mots de Passe Java
 
-VaultJar est un gestionnaire de mots de passe de bureau léger, sécurisé et multiplateforme développé en Java Swing. Il permet de générer des mots de passe robustes et de stocker vos identifiants de manière hautement sécurisée grâce à un chiffrement de bout en bout.
+PasswordGenerator est un gestionnaire de mots de passe de bureau léger, sécurisé et multiplateforme développé en Java Swing. Il permet de générer des mots de passe robustes et de stocker vos identifiants de manière hautement sécurisée grâce à un chiffrement de bout en bout.
 
 ---
 
@@ -10,16 +10,15 @@ Pour maintenir de bonnes pratiques de développement, le projet est structuré s
 
 ```text
 src/
-└── com/
-    └── vaultjar/
-        ├── App.java                 # Point d'entrée de l'application
-        ├── model/
-        │   └── PasswordEntry.java   # Structure de données d'un compte
-        ├── crypto/
-        │   ├── CryptoUtils.java     # Moteur de chiffrement AES-256 GCM
-        │   └── PasswordGenerator.java # Logique de génération de mots de passe
-        └── ui/
-            └── PasswordManagerGUI.java # Interface graphique (Swing CardLayout)
+└── PassWord-Generator/
+    ├── App.java                 # Point d'entrée de l'application
+    ├── model/
+    │   └── PasswordEntry.java   # Structure de données d'un compte
+    ├── crypto/
+    │   ├── CryptoUtils.java     # Moteur de chiffrement AES-256 GCM
+    │   └── PasswordGenerator.java # Logique de génération de mots de passe
+    └── UI/
+        └── PasswordManagerGUI.java # Interface graphique (Swing CardLayout)
 ```
 ## 📁 Rangement des fichiers :
 model/ : Contient les objets métiers (les données pures).
@@ -47,7 +46,7 @@ Lancement via l'Exécutable JAR
 Téléchargez le fichier VaultJar.jar depuis l'onglet Releases, puis double-cliquez dessus ou utilisez votre terminal :
 
 ```bash
-java -jar VaultJar.jar
+java -jar PassWord-Generator.jar
 ```
 Lancement via l'Exécutable Windows (.EXE).
 Pour les utilisateurs Windows sans Java préinstallé, téléchargez l'installateur PassWordGenerator.exe depuis l'onglet Releases et installez-le directement.
