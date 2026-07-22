@@ -1,6 +1,7 @@
 # Exclude IntelliJ build folders
 out/
 target/
+src/META-INF/
 
 # Exclude absolutely all executables
 *.jar
