@@ -64,6 +64,7 @@ def create_release(version):
     print("⚙️ Génération de l'exécutable (.exe)...")
     cmd_exe = [
         "jpackage",
+        "--java-options", "--enable-native-access=ALL-UNNAMED",
         "--type", "exe",
         "--input", input_dir,
         "--dest", release_dir,
@@ -88,10 +89,11 @@ def create_release(version):
     print("⚙️ Génération de l'installateur (.msi)...")
     cmd_msi = [
         "jpackage",
+        "--java-options", "--enable-native-access=ALL-UNNAMED",
         "--type", "msi",
         "--input", input_dir,
         "--dest", release_dir,
-        "--name", f"{APP_NAME}Installer",
+        "--name", f"{APP_NAME}",
         "--main-jar", temp_jar_name,
         "--main-class", MAIN_CLASS,
         "--win-shortcut",

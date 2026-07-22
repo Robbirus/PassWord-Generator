@@ -5,10 +5,12 @@ import model.AppSettings;
 import model.PasswordEntry;
 
 import javax.swing.*;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.datatransfer.StringSelection;
 import java.util.ArrayList;
+import java.util.List;
 
 public class DashboardPanel extends JPanel {
 
@@ -16,29 +18,75 @@ public class DashboardPanel extends JPanel {
     private DefaultTableModel tableModel;
     private PasswordManagerGUI mainFrame;
 
+    private JComboBox<String> categoryFilterCombo;
+    private JCheckBox favoritesFilterCheck;
+
+    private final String[] CATEGORIES = {"Toutes", "Général", "Réseaux Sociaux", "Travail", "Banque", "Achats", "Personnel"};
+
     public DashboardPanel(PasswordManagerGUI mainFrame) {
         this.mainFrame = mainFrame;
         setLayout(new BorderLayout(10, 10));
         setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
 
+        // --- HEADER ---
         JLabel titleLabel = new JLabel("Mon Coffre-fort de Mots de Passe", SwingConstants.CENTER);
         titleLabel.setFont(new Font("Dialog", Font.BOLD, 20));
-        add(titleLabel, BorderLayout.NORTH);
 
-        String[] columns = {"Site Web", "Identifiant", "Mot de Passe", "Date d'ajout"};
+        // --- FILTER BAR ---
+        JPanel filterPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
+        filterPanel.add(new JLabel("Catégorie :"));
+
+        categoryFilterCombo = new JComboBox<>(CATEGORIES);
+        categoryFilterCombo.addActionListener(e -> applyFiltersAndRefresh());
+        filterPanel.add(categoryFilterCombo);
+
+        favoritesFilterCheck = new JCheckBox("★ Favoris uniquement");
+        favoritesFilterCheck.addActionListener(e -> applyFiltersAndRefresh());
+        filterPanel.add(favoritesFilterCheck);
+
+        JPanel topContainer = new JPanel(new BorderLayout());
+        topContainer.add(titleLabel, BorderLayout.NORTH);
+        topContainer.add(filterPanel, BorderLayout.SOUTH);
+        add(topContainer, BorderLayout.NORTH);
+
+        // --- TABLE ---
+        String[] columns = {"★", "Logo", "Site Web", "Identifiant", "Mot de Passe", "Catégorie", "Tags", "Date"};
         tableModel = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
             }
+
+            @Override
+            public Class<?> getColumnClass(int columnIndex) {
+                if (columnIndex == 1) return ImageIcon.class; // Support de l'image Favicon
+                return String.class;
+            }
         };
 
         table = new JTable(tableModel);
-        table.setRowHeight(28);
+        table.setAutoCreateRowSorter(true);
+        table.setRowHeight(32);
         table.setFont(new Font("Dialog", Font.PLAIN, 13));
+
+        // Column Sizing
+        table.getColumnModel().getColumn(0).setPreferredWidth(30);  // ★
+        table.getColumnModel().getColumn(1).setPreferredWidth(40);  // Logo
+        table.getColumnModel().getColumn(2).setPreferredWidth(140); // Site
+        table.getColumnModel().getColumn(3).setPreferredWidth(120); // User
+        table.getColumnModel().getColumn(4).setPreferredWidth(100); // Pass
+        table.getColumnModel().getColumn(5).setPreferredWidth(100); // Catégorie
+        table.getColumnModel().getColumn(6).setPreferredWidth(100); // Tags
+
+        // Centered favourite star
+        DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
+        centerRenderer.setHorizontalAlignment(JLabel.CENTER);
+        table.getColumnModel().getColumn(0).setCellRenderer(centerRenderer);
+
         JScrollPane scrollPane = new JScrollPane(table);
         add(scrollPane, BorderLayout.CENTER);
 
+        // --- ACTION BUTTON ---
         JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
 
         JButton btnCopy = new JButton("Copier");
@@ -46,13 +94,10 @@ public class DashboardPanel extends JPanel {
         JButton btnDelete = new JButton("Supprimer");
         btnDelete.setForeground(new Color(220, 53, 69));
 
-        // --- ACTION : COPIER ---
+        // COPY ACTION
         btnCopy.addActionListener(e -> {
-            int selectedRow = table.getSelectedRow();
-            if (selectedRow != -1) {
-                int modelRow = table.convertRowIndexToModel(selectedRow);
-                PasswordEntry entry = mainFrame.getFakeDatabase().get(modelRow);
-
+            PasswordEntry entry = getSelectedEntry();
+            if (entry != null) {
                 StringSelection selection = new StringSelection(entry.getPassword());
                 Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, null);
                 JOptionPane.showMessageDialog(this, "Mot de passe copié dans le presse-papier !");
@@ -61,32 +106,32 @@ public class DashboardPanel extends JPanel {
             }
         });
 
-        // --- ACTION : ÉDITER (AVEC GÉNÉRATEUR DEDANS) ---
+        // EDIT ACTION
         btnEdit.addActionListener(e -> {
-            int selectedRow = table.getSelectedRow();
-            if (selectedRow != -1) {
-                int modelRow = table.convertRowIndexToModel(selectedRow);
-                PasswordEntry entry = mainFrame.getFakeDatabase().get(modelRow);
-
-                // Champs de saisie pré-remplis
+            PasswordEntry entry = getSelectedEntry();
+            if (entry != null) {
                 JTextField siteInput = new JTextField(entry.getWebsite(), 20);
                 JTextField userInput = new JTextField(entry.getUsername(), 20);
                 JTextField passInput = new JTextField(entry.getPassword(), 20);
 
-                // Bouton Générateur de mot de passe
+                String[] formCategories = {"Général", "Réseaux Sociaux", "Travail", "Banque", "Achats", "Personnel"};
+                JComboBox<String> categoryInput = new JComboBox<>(formCategories);
+                categoryInput.setSelectedItem(entry.getCategory());
+
+                JTextField tagsInput = new JTextField(entry.getTags(), 20);
+                JCheckBox favoriteInput = new JCheckBox("Marquer comme favori", entry.isFavorite());
+
                 JButton btnGenerate = new JButton("🎲 Générer");
                 btnGenerate.addActionListener(genEvent -> {
                     PasswordGenerator generator = new PasswordGenerator();
-                    String newGeneratedPassword = generator.generatePassword(16, true, true, true, true);
-                    passInput.setText(newGeneratedPassword);
+                    String newPass = generator.generatePassword(16, true, true, true, true);
+                    passInput.setText(newPass);
                 });
 
-                // Ligne du mot de passe avec son bouton générateur à côté
                 JPanel passPanel = new JPanel(new BorderLayout(5, 0));
                 passPanel.add(passInput, BorderLayout.CENTER);
                 passPanel.add(btnGenerate, BorderLayout.EAST);
 
-                // Formulaire d'édition
                 JPanel editForm = new JPanel(new GridLayout(0, 1, 5, 5));
                 editForm.add(new JLabel("Site Web / Application :"));
                 editForm.add(siteInput);
@@ -94,6 +139,11 @@ public class DashboardPanel extends JPanel {
                 editForm.add(userInput);
                 editForm.add(new JLabel("Mot de Passe :"));
                 editForm.add(passPanel);
+                editForm.add(new JLabel("Catégorie :"));
+                editForm.add(categoryInput);
+                editForm.add(new JLabel("Tags (séparés par des virgules) :"));
+                editForm.add(tagsInput);
+                editForm.add(favoriteInput);
 
                 int result = JOptionPane.showConfirmDialog(
                         this, editForm, "Modifier le mot de passe",
@@ -101,15 +151,15 @@ public class DashboardPanel extends JPanel {
                 );
 
                 if (result == JOptionPane.OK_OPTION) {
-                    // Mettre à jour les données de l'objet
                     entry.setWebsite(siteInput.getText().trim());
                     entry.setUsername(userInput.getText().trim());
                     entry.setPassword(passInput.getText().trim());
+                    entry.setCategory((String) categoryInput.getSelectedItem());
+                    entry.setTags(tagsInput.getText().trim());
+                    entry.setFavorite(favoriteInput.isSelected());
 
-                    // Sauvegarder sur disque et rafraîchir IHM + Audit
                     mainFrame.saveVault();
                     mainFrame.refreshDashboardDisplay();
-
                     JOptionPane.showMessageDialog(this, "Entrée modifiée avec succès !");
                 }
             } else {
@@ -117,30 +167,25 @@ public class DashboardPanel extends JPanel {
             }
         });
 
-        // --- ACTION : SUPPRIMER ---
+        // DELETE ACTION
         btnDelete.addActionListener(e -> {
             int selectedRow = table.getSelectedRow();
-            if (selectedRow != -1) {
-                int modelRow = table.convertRowIndexToModel(selectedRow);
-                ArrayList<PasswordEntry> db = mainFrame.getFakeDatabase();
+            PasswordEntry entry = getSelectedEntry();
 
-                if (modelRow < db.size()) {
-                    PasswordEntry entry = db.get(modelRow);
+            if (selectedRow != -1 && entry != null) {
+                int confirm = JOptionPane.showConfirmDialog(
+                        this,
+                        "Êtes-vous sûr de vouloir supprimer \"" + entry.getWebsite() + "\" ?",
+                        "Confirmation de suppression",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.WARNING_MESSAGE
+                );
 
-                    int confirm = JOptionPane.showConfirmDialog(
-                            this,
-                            "Êtes-vous sûr de vouloir supprimer \"" + entry.getWebsite() + "\" ?",
-                            "Confirmation de suppression",
-                            JOptionPane.YES_NO_OPTION,
-                            JOptionPane.WARNING_MESSAGE
-                    );
-
-                    if (confirm == JOptionPane.YES_OPTION) {
-                        db.remove(modelRow);
-                        mainFrame.saveVault();
-                        mainFrame.refreshDashboardDisplay();
-                        JOptionPane.showMessageDialog(this, "Mot de passe supprimé !");
-                    }
+                if (confirm == JOptionPane.YES_OPTION) {
+                    mainFrame.getFakeDatabase().remove(entry);
+                    mainFrame.saveVault();
+                    mainFrame.refreshDashboardDisplay();
+                    JOptionPane.showMessageDialog(this, "Mot de passe supprimé !");
                 }
             } else {
                 JOptionPane.showMessageDialog(this, "Veuillez sélectionner une ligne à supprimer.", "Attention", JOptionPane.WARNING_MESSAGE);
@@ -153,20 +198,58 @@ public class DashboardPanel extends JPanel {
         add(actionPanel, BorderLayout.SOUTH);
     }
 
+    private PasswordEntry getSelectedEntry() {
+        int selectedRow = table.getSelectedRow();
+        if (selectedRow != -1) {
+            int modelRow = table.convertRowIndexToModel(selectedRow);
+            String website = (String) tableModel.getValueAt(modelRow, 2);
+            String username = (String) tableModel.getValueAt(modelRow, 3);
+
+            for (PasswordEntry entry : mainFrame.getFakeDatabase()) {
+                if (entry.getWebsite().equals(website) && entry.getUsername().equals(username)) {
+                    return entry;
+                }
+            }
+        }
+        return null;
+    }
+
+    private void applyFiltersAndRefresh() {
+        loadDataIntoTable(mainFrame.getFakeDatabase());
+    }
+
     public void loadDataIntoTable(ArrayList<PasswordEntry> database) {
         tableModel.setRowCount(0);
         boolean showPass = AppSettings.isShowPasswordsByDefault();
 
-        if (database != null) {
+        if (database == null) return;
+
+        String selectedCategory = (String) categoryFilterCombo.getSelectedItem();
+        boolean favoritesOnly = favoritesFilterCheck.isSelected();
+
+        // Asynchronous loading of templates to avoid freezing the interface
+        SwingUtilities.invokeLater(() -> {
             for (PasswordEntry entry : database) {
+                // Applying the filters
+                if (favoritesOnly && !entry.isFavorite()) continue;
+                if (selectedCategory != null && !selectedCategory.equals("Toutes")
+                        && !entry.getCategory().equalsIgnoreCase(selectedCategory)) continue;
+
+                String star = entry.isFavorite() ? "★" : "☆";
                 String displayedPassword = showPass ? entry.getPassword() : "••••••••";
+                ImageIcon favicon = entry.FetchFavicon();
+
                 tableModel.addRow(new Object[]{
+                        star,
+                        favicon,
                         entry.getWebsite(),
                         entry.getUsername(),
                         displayedPassword,
+                        entry.getCategory(),
+                        entry.getTags(),
                         entry.getDateAdded()
                 });
             }
-        }
+        });
     }
 }

@@ -356,141 +356,117 @@ public class PasswordManagerGUI extends JFrame {
 
     // -- SCREEN 3: ADDITION FORM ---
     private JPanel createFormPanel() {
-        JPanel panel = new JPanel(null);
+        JPanel panel = new JPanel(new GridBagLayout());
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(8, 8, 8, 8);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
 
-        JLabel titleLabel = new JLabel("Ajouter une entrée", SwingConstants.CENTER);
-        titleLabel.setFont(new Font("Dialog", Font.BOLD, 22));
-        titleLabel.setBounds(0, 20, 650, 30);
-        panel.add(titleLabel);
+        // --- Form components---
+        JTextField siteField = new JTextField(20);
+        JTextField userField = new JTextField(20);
+        JTextField passField = new JTextField(20);
 
-        JLabel siteLabel = new JLabel("Site Web :");
-        siteLabel.setBounds(50, 80, 100, 30);
-        panel.add(siteLabel);
-        JTextField siteInput = new JTextField();
-        siteInput.setBounds(160, 80, 380, 30);
-        panel.add(siteInput);
+        String[] categories = {"Général", "Réseaux Sociaux", "Travail", "Banque", "Achats", "Personnel"};
+        JComboBox<String> categoryCombo = new JComboBox<>(categories);
 
-        JLabel userInput = new JLabel("Identifiant / Email :");
-        userInput.setBounds(50, 130, 120, 30);
-        panel.add(userInput);
-        JTextField usernameInput = new JTextField();
-        usernameInput.setBounds(160, 130, 380, 30);
-        panel.add(usernameInput);
+        JTextField tagsField = new JTextField(20);
+        JCheckBox favoriteCheck = new JCheckBox("Marquer comme favori");
 
-        JLabel passLabel = new JLabel("Mot de passe :");
-        passLabel.setBounds(50, 180, 100, 30);
-        panel.add(passLabel);
-        JTextField passwordInput = new JTextField();
-        passwordInput.setBounds(160, 180, 250, 30);
-        panel.add(passwordInput);
+        JButton btnGenerate = new JButton("🎲 Générer");
+        JButton btnAdd = new JButton("➕ Ajouter au coffre");
+        btnAdd.setFont(new Font("Dialog", Font.BOLD, 14));
 
-        JButton generatePopupCtx = new JButton("Générer");
-        generatePopupCtx.setBounds(420, 180, 120, 30);
-        generatePopupCtx.addActionListener(e -> {
-            JDialog genDialog = new JDialog(this, "Générateur", true);
-            genDialog.setSize(400, 450);
-            genDialog.setLayout(null);
-            genDialog.setLocationRelativeTo(this);
+        // Ligne Mot de passe + Bouton Générateur
+        JPanel passPanel = new JPanel(new BorderLayout(5, 0));
+        passPanel.add(passField, BorderLayout.CENTER);
+        passPanel.add(btnGenerate, BorderLayout.EAST);
 
-            JLabel lenLabel = new JLabel("Longueur :");
-            lenLabel.setBounds(30, 30, 100, 30);
-            genDialog.add(lenLabel);
+        // --- Disposition GridBagLayout ---
+        int row = 0;
 
-            JTextField lenInput = new JTextField("12");
-            lenInput.setBounds(150, 30, 50, 30);
-            genDialog.add(lenInput);
+        // Site Web
+        gbc.gridx = 0; gbc.gridy = row;
+        panel.add(new JLabel("Site Web / Application :"), gbc);
+        gbc.gridx = 1;
+        panel.add(siteField, gbc);
 
-            JCheckBox upperCb = new JCheckBox("Majuscules", true);
-            upperCb.setBounds(30, 80, 150, 30);
-            genDialog.add(upperCb);
+        // Identifiant
+        row++;
+        gbc.gridx = 0; gbc.gridy = row;
+        panel.add(new JLabel("Identifiant / Email :"), gbc);
+        gbc.gridx = 1;
+        panel.add(userField, gbc);
 
-            JCheckBox lowerCb = new JCheckBox("Minuscules", true);
-            lowerCb.setBounds(30, 120, 150, 30);
-            genDialog.add(lowerCb);
+        // Mot de Passe
+        row++;
+        gbc.gridx = 0; gbc.gridy = row;
+        panel.add(new JLabel("Mot de Passe :"), gbc);
+        gbc.gridx = 1;
+        panel.add(passPanel, gbc);
 
-            JCheckBox numCb = new JCheckBox("Chiffres", true);
-            numCb.setBounds(30, 160, 150, 30);
-            genDialog.add(numCb);
+        // Catégorie
+        row++;
+        gbc.gridx = 0; gbc.gridy = row;
+        panel.add(new JLabel("Catégorie :"), gbc);
+        gbc.gridx = 1;
+        panel.add(categoryCombo, gbc);
 
-            JCheckBox symCb = new JCheckBox("Symboles", false);
-            symCb.setBounds(30, 200, 150, 30);
-            genDialog.add(symCb);
+        // Tags
+        row++;
+        gbc.gridx = 0; gbc.gridy = row;
+        panel.add(new JLabel("Tags (séparés par des virgules) :"), gbc);
+        gbc.gridx = 1;
+        panel.add(tagsField, gbc);
 
-            JTextField resOutput = new JTextField();
-            resOutput.setEditable(false);
-            resOutput.setBounds(30, 260, 320, 35);
-            genDialog.add(resOutput);
+        // Favori
+        row++;
+        gbc.gridx = 1; gbc.gridy = row;
+        panel.add(favoriteCheck, gbc);
 
-            JButton btnGen = new JButton("Générer");
-            btnGen.setBounds(30, 320, 140, 35);
-            btnGen.addActionListener(evt -> {
-                try {
-                    int length = Integer.parseInt(lenInput.getText());
-                    String pass = passwordGenerator.generatePassword(length,
-                            upperCb.isSelected(), lowerCb.isSelected(),
-                            numCb.isSelected(), symCb.isSelected());
-                    resOutput.setText(pass);
-                } catch (NumberFormatException ex) {
-                    JOptionPane.showMessageDialog(genDialog, "Longueur invalide.");
-                }
-            });
-            genDialog.add(btnGen);
+        // Bouton Ajouter
+        row++;
+        gbc.gridx = 0; gbc.gridy = row; gbc.gridwidth = 2;
+        panel.add(btnAdd, gbc);
 
-            JButton btnAccept = new JButton("Utiliser");
-            btnAccept.setBounds(210, 320, 140, 35);
-            btnAccept.addActionListener(evt -> {
-                if (!resOutput.getText().isEmpty()) {
-                    passwordInput.setText(resOutput.getText());
-                    genDialog.dispose();
-                }
-            });
-            genDialog.add(btnAccept);
-
-            genDialog.setVisible(true);
+        // --- Actions ---
+        btnGenerate.addActionListener(e -> {
+            PasswordGenerator generator = new PasswordGenerator();
+            String generatedPass = generator.generatePassword(16, true, true, true, true);
+            passField.setText(generatedPass);
         });
-        panel.add(generatePopupCtx);
 
-        JButton saveButton = new JButton("Enregistrer");
-        saveButton.setBounds(180, 260, 140, 40);
-        saveButton.setFont(new Font("Dialog", Font.BOLD, 14));
-        saveButton.addActionListener(e -> {
-            String site = siteInput.getText().trim();
-            String user = usernameInput.getText().trim();
-            String pass = passwordInput.getText().trim();
+        btnAdd.addActionListener(e -> {
+            String site = siteField.getText().trim();
+            String user = userField.getText().trim();
+            String pass = passField.getText().trim();
+            String category = (String) categoryCombo.getSelectedItem();
+            String tags = tagsField.getText().trim();
+            boolean isFavorite = favoriteCheck.isSelected();
 
             if (site.isEmpty() || user.isEmpty() || pass.isEmpty()) {
-                JOptionPane.showMessageDialog(panel, "Veuillez remplir tous les champs.", "Erreur", JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(panel, "Veuillez remplir au moins le site, l'identifiant et le mot de passe.", "Erreur", JOptionPane.ERROR_MESSAGE);
                 return;
             }
 
-            fakeDatabase.add(new PasswordEntry(site, user, pass));
+            // Création avec le constructeur 7 arguments
+            String currentDate = java.time.LocalDate.now().toString();
+            PasswordEntry newEntry = new PasswordEntry(site, user, pass, currentDate, category, tags, isFavorite);
+
+            fakeDatabase.add(newEntry);
             saveVault();
             refreshDashboardDisplay();
 
-            siteInput.setText("");
-            usernameInput.setText("");
-            passwordInput.setText("");
+            // Reinitialisation des champs
+            siteField.setText("");
+            userField.setText("");
+            passField.setText("");
+            tagsField.setText("");
+            categoryCombo.setSelectedIndex(0);
+            favoriteCheck.setSelected(false);
 
-            // Navigation vers le 1er onglet (Coffre-fort)
-            if (tabbedPane != null) {
-                tabbedPane.setSelectedIndex(0);
-            }
+            JOptionPane.showMessageDialog(panel, "Mot de passe ajouté avec succès !");
         });
-        panel.add(saveButton);
-
-        JButton cancelButton = new JButton("Annuler");
-        cancelButton.setBounds(340, 260, 140, 40);
-        cancelButton.addActionListener(e -> {
-            siteInput.setText("");
-            usernameInput.setText("");
-            passwordInput.setText("");
-
-            // Navigation vers le 1er onglet (Coffre-fort)
-            if (tabbedPane != null) {
-                tabbedPane.setSelectedIndex(0);
-            }
-        });
-        panel.add(cancelButton);
 
         return panel;
     }
