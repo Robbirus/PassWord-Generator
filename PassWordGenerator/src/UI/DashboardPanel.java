@@ -5,12 +5,13 @@ import model.AppSettings;
 import model.PasswordEntry;
 
 import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.datatransfer.StringSelection;
 import java.util.ArrayList;
-import java.util.List;
 
 public class DashboardPanel extends JPanel {
 
@@ -18,6 +19,7 @@ public class DashboardPanel extends JPanel {
     private DefaultTableModel tableModel;
     private PasswordManagerGUI mainFrame;
 
+    private JTextField searchField;
     private JComboBox<String> categoryFilterCombo;
     private JCheckBox favoritesFilterCheck;
 
@@ -32,14 +34,26 @@ public class DashboardPanel extends JPanel {
         JLabel titleLabel = new JLabel("Mon Coffre-fort de Mots de Passe", SwingConstants.CENTER);
         titleLabel.setFont(new Font("Dialog", Font.BOLD, 20));
 
-        // --- FILTER BAR ---
+        // --- Search bar and filters ---
         JPanel filterPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
-        filterPanel.add(new JLabel("Catégorie :"));
 
+        // Search field
+        filterPanel.add(new JLabel("🔍 Rechercher :"));
+        searchField = new JTextField(15);
+        searchField.getDocument().addDocumentListener(new DocumentListener() {
+            public void insertUpdate(DocumentEvent e) { applyFiltersAndRefresh(); }
+            public void removeUpdate(DocumentEvent e) { applyFiltersAndRefresh(); }
+            public void changedUpdate(DocumentEvent e) { applyFiltersAndRefresh(); }
+        });
+        filterPanel.add(searchField);
+
+        // Category
+        filterPanel.add(new JLabel("Catégorie :"));
         categoryFilterCombo = new JComboBox<>(CATEGORIES);
         categoryFilterCombo.addActionListener(e -> applyFiltersAndRefresh());
         filterPanel.add(categoryFilterCombo);
 
+        // Favorites
         favoritesFilterCheck = new JCheckBox("★ Favoris uniquement");
         favoritesFilterCheck.addActionListener(e -> applyFiltersAndRefresh());
         filterPanel.add(favoritesFilterCheck);
@@ -59,15 +73,15 @@ public class DashboardPanel extends JPanel {
 
             @Override
             public Class<?> getColumnClass(int columnIndex) {
-                if (columnIndex == 1) return ImageIcon.class; // Favicon image support
+                if (columnIndex == 1) return ImageIcon.class; // Support de l'image Favicon
                 return String.class;
             }
         };
 
         table = new JTable(tableModel);
-        table.setAutoCreateRowSorter(true);
         table.setRowHeight(32);
         table.setFont(new Font("Dialog", Font.PLAIN, 13));
+        table.setAutoCreateRowSorter(true);
 
         // Column Sizing
         table.getColumnModel().getColumn(0).setPreferredWidth(30);  // ★
@@ -78,7 +92,7 @@ public class DashboardPanel extends JPanel {
         table.getColumnModel().getColumn(5).setPreferredWidth(100); // Catégorie
         table.getColumnModel().getColumn(6).setPreferredWidth(100); // Tags
 
-        // Centered favourite star
+        // Centering of the favorite star
         DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
         centerRenderer.setHorizontalAlignment(JLabel.CENTER);
         table.getColumnModel().getColumn(0).setCellRenderer(centerRenderer);
@@ -86,7 +100,7 @@ public class DashboardPanel extends JPanel {
         JScrollPane scrollPane = new JScrollPane(table);
         add(scrollPane, BorderLayout.CENTER);
 
-        // --- ACTION BUTTON ---
+        // --- ACTION BUTTONS ---
         JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
 
         JButton btnCopy = new JButton("Copier");
@@ -169,10 +183,9 @@ public class DashboardPanel extends JPanel {
 
         // DELETE ACTION
         btnDelete.addActionListener(e -> {
-            int selectedRow = table.getSelectedRow();
             PasswordEntry entry = getSelectedEntry();
 
-            if (selectedRow != -1 && entry != null) {
+            if (entry != null) {
                 int confirm = JOptionPane.showConfirmDialog(
                         this,
                         "Êtes-vous sûr de vouloir supprimer \"" + entry.getWebsite() + "\" ?",
@@ -224,16 +237,29 @@ public class DashboardPanel extends JPanel {
 
         if (database == null) return;
 
+        String query = searchField != null ? searchField.getText().trim().toLowerCase() : "";
         String selectedCategory = (String) categoryFilterCombo.getSelectedItem();
         boolean favoritesOnly = favoritesFilterCheck.isSelected();
 
-        // Asynchronous loading of templates to avoid freezing the interface
         SwingUtilities.invokeLater(() -> {
             for (PasswordEntry entry : database) {
-                // Applying the filters
+                // 1. Filter by favorites
                 if (favoritesOnly && !entry.isFavorite()) continue;
+
+                // 2. Filter by category
                 if (selectedCategory != null && !selectedCategory.equals("Toutes")
                         && !entry.getCategory().equalsIgnoreCase(selectedCategory)) continue;
+
+                // 3. Filter by text (search in site name, identifier and tags)
+                if (!query.isEmpty()) {
+                    boolean matchSite = entry.getWebsite() != null && entry.getWebsite().toLowerCase().contains(query);
+                    boolean matchUser = entry.getUsername() != null && entry.getUsername().toLowerCase().contains(query);
+                    boolean matchTags = entry.getTags() != null && entry.getTags().toLowerCase().contains(query);
+
+                    if (!matchSite && !matchUser && !matchTags) {
+                        continue;
+                    }
+                }
 
                 String star = entry.isFavorite() ? "★" : "☆";
                 String displayedPassword = showPass ? entry.getPassword() : "••••••••";
