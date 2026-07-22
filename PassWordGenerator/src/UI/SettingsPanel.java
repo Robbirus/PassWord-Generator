@@ -35,7 +35,7 @@ public class SettingsPanel extends JPanel {
         formPanel.add(showPassCb, gbc);
 
         // 2. Dark Mode
-        darkModeCb = new JCheckBox("Activer le Mode Sombre (FlatLaf)");
+        darkModeCb = new JCheckBox("Activer le Mode Sombre");
         darkModeCb.setSelected(AppSettings.isDarkMode());
         gbc.gridx = 0; gbc.gridy = row++; gbc.gridwidth = 2;
         formPanel.add(darkModeCb, gbc);

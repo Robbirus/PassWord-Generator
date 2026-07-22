@@ -56,7 +56,7 @@ public class PasswordManagerGUI extends JFrame {
 
         // Initializing Tab Components
         this.dashboardPanel = new DashboardPanel(this);
-        this.auditPanel = new SecurityAuditPanel();
+        this.auditPanel = new SecurityAuditPanel(this);
         SettingsPanel settingsPanel = new SettingsPanel(this);
 
         JPanel formPanel = createFormPanel();
@@ -72,7 +72,7 @@ public class PasswordManagerGUI extends JFrame {
             int selectedIndex = tabbedPane.getSelectedIndex();
             // If the user clicks on the Audit tab (index 2)
             if (selectedIndex == 2 && auditPanel != null) {
-                auditPanel.analyzeVault(fakeDatabase);
+                auditPanel.analyzeVault();
             }
         });
 
@@ -93,7 +93,7 @@ public class PasswordManagerGUI extends JFrame {
             dashboardPanel.loadDataIntoTable(fakeDatabase);
         }
         if (auditPanel != null) {
-            auditPanel.analyzeVault(fakeDatabase); // <--- L'Audit réanalyse immédiatement la liste nettoyée
+            auditPanel.analyzeVault();
         }
     }
 

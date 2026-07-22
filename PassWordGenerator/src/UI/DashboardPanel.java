@@ -59,7 +59,7 @@ public class DashboardPanel extends JPanel {
 
             @Override
             public Class<?> getColumnClass(int columnIndex) {
-                if (columnIndex == 1) return ImageIcon.class; // Support de l'image Favicon
+                if (columnIndex == 1) return ImageIcon.class; // Favicon image support
                 return String.class;
             }
         };

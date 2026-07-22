@@ -3,6 +3,7 @@ package UI;
 import model.PasswordEntry;
 
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -10,101 +11,157 @@ import java.util.Map;
 
 public class SecurityAuditPanel extends JPanel {
 
-    private JLabel scoreLabel;
-    private JProgressBar progressBar;
-    private JTextArea detailsArea;
+    private PasswordManagerGUI mainFrame;
+    private JLabel overallScoreLabel;
+    private JProgressBar overallProgressBar;
+    private JPanel detailsPanel;
 
-    public SecurityAuditPanel() {
+    public SecurityAuditPanel(PasswordManagerGUI mainFrame) {
+        this.mainFrame = mainFrame;
         setLayout(new BorderLayout(15, 15));
-        setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        setBorder(new EmptyBorder(15, 15, 15, 15));
 
-        // Header: Overall Score
-        JPanel topPanel = new JPanel(new GridLayout(2, 1, 5, 5));
-        scoreLabel = new JLabel("Score de Sécurité : -- %", SwingConstants.CENTER);
-        scoreLabel.setFont(new Font("Dialog", Font.BOLD, 18));
+        // --- EN-TÊTE DU SCORE GLOBAL ---
+        JPanel headerPanel = new JPanel(new GridLayout(3, 1, 5, 5));
+        JLabel titleLabel = new JLabel("Audit de Sécurité du Coffre-Fort", SwingConstants.CENTER);
+        titleLabel.setFont(new Font("Dialog", Font.BOLD, 18));
 
-        progressBar = new JProgressBar(0, 100);
-        progressBar.setStringPainted(true);
-        progressBar.setFont(new Font("Dialog", Font.BOLD, 14));
+        overallScoreLabel = new JLabel("Score global : 0%", SwingConstants.CENTER);
+        overallScoreLabel.setFont(new Font("Dialog", Font.BOLD, 14));
 
-        topPanel.add(scoreLabel);
-        topPanel.add(progressBar);
-        add(topPanel, BorderLayout.NORTH);
+        overallProgressBar = new JProgressBar(0, 100);
+        overallProgressBar.setStringPainted(true);
+        overallProgressBar.setPreferredSize(new Dimension(300, 25));
 
-        // Center: Audit Report
-        detailsArea = new JTextArea();
-        detailsArea.setEditable(false);
-        detailsArea.setFont(new Font("Monospaced", Font.PLAIN, 13));
-        detailsArea.setMargin(new Insets(10, 10, 10, 10));
+        headerPanel.add(titleLabel);
+        headerPanel.add(overallScoreLabel);
+        headerPanel.add(overallProgressBar);
 
-        JScrollPane scrollPane = new JScrollPane(detailsArea);
-        scrollPane.setBorder(BorderFactory.createTitledBorder("Rapport d'analyse détaillé"));
+        add(headerPanel, BorderLayout.NORTH);
+
+        // --- Details list ---
+        detailsPanel = new JPanel();
+        detailsPanel.setLayout(new BoxLayout(detailsPanel, BoxLayout.Y_AXIS));
+
+        JScrollPane scrollPane = new JScrollPane(detailsPanel);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
         add(scrollPane, BorderLayout.CENTER);
     }
 
-    public void analyzeVault(ArrayList<PasswordEntry> database) {
-        detailsArea.setText("");
+    public void analyzeVault() {
+        detailsPanel.removeAll();
+        ArrayList<PasswordEntry> database = mainFrame.getFakeDatabase();
 
         if (database == null || database.isEmpty()) {
-            scoreLabel.setText("Score de Sécurité : N/A");
-            progressBar.setValue(0);
-            progressBar.setForeground(Color.GRAY);
-            detailsArea.setText("Aucun mot de passe dans le coffre-fort pour effectuer l'analyse.");
+            overallScoreLabel.setText("Score global : Aucun mot de passe à analyser");
+            overallProgressBar.setValue(0);
+            overallProgressBar.setForeground(Color.GRAY);
+            revalidate();
+            repaint();
             return;
         }
 
-        int totalEntries = database.size();
-        int weakCount = 0;
-        int duplicateCount = 0;
-
-        StringBuilder report = new StringBuilder();
-        Map<String, Integer> passFrequency = new HashMap<>();
-
-        // Analysis 1 & 2: Weak passwords + Frequency
+        // 1. Count the frequency of each password (to detect reuses)
+        Map<String, Integer> passwordCounts = new HashMap<>();
         for (PasswordEntry entry : database) {
             String pass = entry.getPassword();
-            passFrequency.put(pass, passFrequency.getOrDefault(pass, 0) + 1);
-
-            boolean isWeak = pass.length() < 8 || !pass.matches(".*[0-9].*") || !pass.matches(".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?].*");
-            if (isWeak) {
-                weakCount++;
-                report.append("⚠️ [FAIBLE] Site: ").append(entry.getWebsite())
-                        .append(" (Mot de passe trop court ou manquant de complexité)\n");
-            }
+            passwordCounts.put(pass, passwordCounts.getOrDefault(pass, 0) + 1);
         }
 
-        // Duplicate detection
+        int totalScore = 0;
+
+        // 2. Analyze every entry
         for (PasswordEntry entry : database) {
-            if (passFrequency.get(entry.getPassword()) > 1) {
-                duplicateCount++;
-                report.append("🔁 [RÉUTILISÉ] Site: ").append(entry.getWebsite())
-                        .append(" (Le mot de passe est utilisé sur plusieurs comptes)\n");
-            }
+            int reuseCount = passwordCounts.get(entry.getPassword());
+            int score = calculatePasswordScore(entry.getPassword(), reuseCount);
+            totalScore += score;
+
+            JPanel entryCard = createAuditCard(entry, score, reuseCount);
+            detailsPanel.add(entryCard);
+            detailsPanel.add(Box.createRigidArea(new Dimension(0, 8)));
         }
 
-        // Calcul du Score (100 base)
-        int penaltyWeak = (int) (((double) weakCount / totalEntries) * 50);
-        int penaltyDuplicate = (int) (((double) duplicateCount / totalEntries) * 50);
-        int finalScore = Math.max(0, 100 - penaltyWeak - penaltyDuplicate);
+        // 3. Computes the average score
+        int averageScore = totalScore / database.size();
+        overallScoreLabel.setText("Score global de santé : " + averageScore + "%");
+        overallProgressBar.setValue(averageScore);
 
-        // Affichage des métriques
-        progressBar.setValue(finalScore);
-        scoreLabel.setText("Score de Sécurité : " + finalScore + " / 100");
-
-        if (finalScore >= 80) {
-            progressBar.setForeground(new Color(46, 204, 113)); // Vert
-        } else if (finalScore >= 50) {
-            progressBar.setForeground(new Color(241, 196, 15)); // Orange
+        if (averageScore >= 80) {
+            overallProgressBar.setForeground(new Color(40, 167, 69)); // Vert
+        } else if (averageScore >= 50) {
+            overallProgressBar.setForeground(new Color(255, 193, 7)); // Orange
         } else {
-            progressBar.setForeground(new Color(231, 76, 60));  // Rouge
+            overallProgressBar.setForeground(new Color(220, 53, 69)); // Rouge
         }
 
-        if (report.length() == 0) {
-            report.append("✅ Félicitations ! Tous vos mots de passe sont robustes et uniques.");
+        revalidate();
+        repaint();
+    }
+
+    private int calculatePasswordScore(String password, int reuseCount) {
+        if (password == null || password.isEmpty()) return 0;
+
+        int score = 0;
+
+        // Length (max 40 pts)
+        score += Math.min(password.length() * 4, 40);
+
+        // Uppercase (+15 pts)
+        if (password.matches(".*[A-Z].*")) score += 15;
+
+        // Lowercase (+15 pts)
+        if (password.matches(".*[a-z].*")) score += 15;
+
+        // Numbers (+15 pts)
+        if (password.matches(".*[0-9].*")) score += 15;
+
+        // Symbols (+15 pts)
+        if (password.matches(".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?].*")) score += 15;
+
+        // REUSE PENALTY
+        if (reuseCount > 1) {
+            // Remove 35 points if the password is reused elsewhere
+            score = Math.max(0, score - 35);
+        }
+
+        return Math.min(100, score);
+    }
+
+    private JPanel createAuditCard(PasswordEntry entry, int score, int reuseCount) {
+        JPanel card = new JPanel(new BorderLayout(10, 5));
+        card.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(Color.LIGHT_GRAY, 1),
+                BorderFactory.createEmptyBorder(8, 12, 8, 12)
+        ));
+
+        JLabel infoLabel = new JLabel("<html><b>" + entry.getWebsite() + "</b> (" + entry.getUsername() + ")</html>");
+
+        StringBuilder statusText = new StringBuilder();
+        Color statusColor;
+
+        if (score >= 80) {
+            statusText.append("Fort (").append(score).append("%)");
+            statusColor = new Color(40, 167, 69);
+        } else if (score >= 50) {
+            statusText.append("Moyen (").append(score).append("%)");
+            statusColor = new Color(220, 120, 0);
         } else {
-            report.insert(0, "--- SYNTHÈSE DES RECOMMANDATIONS ---\n\n");
+            statusText.append("Faible (").append(score).append("%)");
+            statusColor = new Color(220, 53, 69);
         }
 
-        detailsArea.setText(report.toString());
+        // Add the reuse warning if applicable
+        if (reuseCount > 1) {
+            statusText.append(" - ⚠️ <i>Réutilisé sur ").append(reuseCount).append(" sites !</i>");
+            statusColor = new Color(220, 53, 69); // Force the red if reused
+        }
+
+        JLabel scoreLabel = new JLabel("<html>" + statusText + "</html>");
+        scoreLabel.setForeground(statusColor);
+
+        card.add(infoLabel, BorderLayout.WEST);
+        card.add(scoreLabel, BorderLayout.EAST);
+
+        return card;
     }
 }
