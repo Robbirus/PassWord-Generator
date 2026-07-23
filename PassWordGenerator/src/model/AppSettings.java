@@ -1,48 +1,86 @@
 package model;
 
-import java.util.prefs.Preferences;
+import java.io.*;
+import java.util.Properties;
 
 public class AppSettings {
 
-    private static final Preferences prefs = Preferences.userNodeForPackage(AppSettings.class);
+    private static final String CONFIG_FILE = "app_config.properties";
 
-    // --- CLÉS DE CONFIGURATION ---
-    private static final String KEY_DARK_MODE = "dark_mode";
-    private static final String KEY_AUTO_LOCK_MINUTES = "auto_lock_minutes";
-    private static final String KEY_SHOW_PASSWORDS_DEFAULT = "show_passwords_default";
-    private static final String KEY_CLEAR_CLIPBOARD_DELAY = "clear_clipboard_delay";
+    private static boolean showPasswordsByDefault = false;
+    private static boolean darkMode = false;
+    private static int clipboardClearDelay = 30; // seconds
+    private static int autoLockDelay = 5;         // minutes
 
-    // --- GETTERS & SETTERS (AVEC VALEURS PAR DÉFAUT) ---
-
-    // 1. Mode Sombre / Thème
-    public static boolean isDarkMode() {
-        return prefs.getBoolean(KEY_DARK_MODE, false);
-    }
-    public static void setDarkMode(boolean enabled) {
-        prefs.putBoolean(KEY_DARK_MODE, enabled);
+    static {
+        loadSettings();
     }
 
-    // 2. Verrouillage automatique (en minutes, 0 = désactivé)
-    public static int getAutoLockMinutes() {
-        return prefs.getInt(KEY_AUTO_LOCK_MINUTES, 5); // 5 min par défaut
-    }
-    public static void setAutoLockMinutes(int minutes) {
-        prefs.putInt(KEY_AUTO_LOCK_MINUTES, minutes);
+    public static void loadSettings() {
+        File file = new File(CONFIG_FILE);
+        if (!file.exists()) return;
+
+        Properties props = new Properties();
+        try (InputStream input = new FileInputStream(file)) {
+            props.load(input);
+
+            showPasswordsByDefault = Boolean.parseBoolean(props.getProperty("showPasswordsByDefault", "false"));
+            darkMode = Boolean.parseBoolean(props.getProperty("darkMode", "false"));
+            clipboardClearDelay = Integer.parseInt(props.getProperty("clipboardClearDelay", "30"));
+            autoLockDelay = Integer.parseInt(props.getProperty("autoLockDelay", "5"));
+
+        } catch (IOException | NumberFormatException e) {
+            System.err.println("Erreur lors du chargement des paramètres : " + e.getMessage());
+        }
     }
 
-    // 3. Masquer/Afficher les mots de passe par défaut dans le tableau
+    public static void saveSettings() {
+        Properties props = new Properties();
+        props.setProperty("showPasswordsByDefault", String.valueOf(showPasswordsByDefault));
+        props.setProperty("darkMode", String.valueOf(darkMode));
+        props.setProperty("clipboardClearDelay", String.valueOf(clipboardClearDelay));
+        props.setProperty("autoLockDelay", String.valueOf(autoLockDelay));
+
+        try (OutputStream output = new FileOutputStream(CONFIG_FILE)) {
+            props.store(output, "Configuration du Gestionnaire de Mots de Passe");
+        } catch (IOException e) {
+            System.err.println("Erreur lors de la sauvegarde des paramètres : " + e.getMessage());
+        }
+    }
+
     public static boolean isShowPasswordsByDefault() {
-        return prefs.getBoolean(KEY_SHOW_PASSWORDS_DEFAULT, false);
-    }
-    public static void setShowPasswordsByDefault(boolean show) {
-        prefs.putBoolean(KEY_SHOW_PASSWORDS_DEFAULT, show);
+        return showPasswordsByDefault;
     }
 
-    // 4. Nettoyage du presse-papier après copie (en secondes)
-    public static int getClearClipboardDelay() {
-        return prefs.getInt(KEY_CLEAR_CLIPBOARD_DELAY, 30); // 30 sec par défaut
+    public static void setShowPasswordsByDefault(boolean show) {
+        showPasswordsByDefault = show;
+        saveSettings();
     }
-    public static void setClearClipboardDelay(int seconds) {
-        prefs.putInt(KEY_CLEAR_CLIPBOARD_DELAY, seconds);
+
+    public static boolean isDarkMode() {
+        return darkMode;
+    }
+
+    public static void setDarkMode(boolean dark) {
+        darkMode = dark;
+        saveSettings();
+    }
+
+    public static int getClipboardClearDelay() {
+        return clipboardClearDelay;
+    }
+
+    public static void setClipboardClearDelay(int delaySeconds) {
+        clipboardClearDelay = delaySeconds;
+        saveSettings();
+    }
+
+    public static int getAutoLockDelay() {
+        return autoLockDelay;
+    }
+
+    public static void setAutoLockDelay(int delayMinutes) {
+        autoLockDelay = delayMinutes;
+        saveSettings();
     }
 }

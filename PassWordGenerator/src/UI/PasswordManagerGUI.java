@@ -1,11 +1,9 @@
 package UI;
 
-import com.formdev.flatlaf.FlatDarkLaf;
-import com.formdev.flatlaf.FlatLaf;
-import com.formdev.flatlaf.FlatLightLaf;
 import crypto.CryptoUtils;
 import crypto.PasswordGenerator;
 import crypto.RecoveryKeyManager;
+import model.AppSettings;
 import model.PasswordEntry;
 
 import javax.swing.*;
@@ -17,11 +15,11 @@ import java.util.Scanner;
 
 public class PasswordManagerGUI extends JFrame {
 
-    private SecurityAuditPanel auditPanel;
+    private final SecurityAuditPanel auditPanel;
 
-    private CardLayout cardLayout;
-    private JPanel mainPanel;
-    private JTabbedPane tabbedPane;
+    private final CardLayout cardLayout;
+    private final JPanel mainPanel;
+    private final JTabbedPane tabbedPane;
 
     private String currentMasterPassword = "";
     private String currentLogin = "";
@@ -29,8 +27,17 @@ public class PasswordManagerGUI extends JFrame {
     private final String FILE_NAME = System.getProperty("user.home") + File.separator + ".vaultjar" + File.separator + "vault.enc";
 
     private ArrayList<PasswordEntry> fakeDatabase;
-    private DashboardPanel dashboardPanel;
-    private PasswordGenerator passwordGenerator;
+    private final DashboardPanel dashboardPanel;
+    private final PasswordGenerator passwordGenerator;
+
+    private ImageIcon vaultIcon     = UIUtils.loadAndScaleIcon("/icons/vault.png", 26, 26);
+    private ImageIcon addIcon       = UIUtils.loadAndScaleIcon("/icons/add.png", 26, 26);
+    private ImageIcon auditIcon     = UIUtils.loadAndScaleIcon("/icons/shield.png", 26, 26);
+    private ImageIcon generatorIcon = UIUtils.loadAndScaleIcon("/icons/generator.png", 26, 26);
+    private ImageIcon dataIcon      = UIUtils.loadAndScaleIcon("/icons/data.png", 26, 26);
+    private ImageIcon settingsIcon  = UIUtils.loadAndScaleIcon("/icons/settings.png", 26, 26);
+    private ImageIcon diceIcon  = UIUtils.loadAndScaleIcon("/icons/dice.png", 26, 26);
+
 
     public PasswordManagerGUI() {
         super("Mon Gestionnaire de Mots de Passe");
@@ -38,9 +45,16 @@ public class PasswordManagerGUI extends JFrame {
         // Apply the saved theme to the very first window launch
         applyTheme();
 
-        setSize(700, 600);
+        setSize(1000, 600);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
+
+        setupAutoLock();
+
+        Image appIcon = UIUtils.loadAndScaleImage("/icons/app_icon.png", 64, 64);
+        if (appIcon != null) {
+            setIconImage(appIcon);
+        }
 
         fakeDatabase = new ArrayList<>();
         passwordGenerator = new PasswordGenerator();
@@ -58,15 +72,20 @@ public class PasswordManagerGUI extends JFrame {
         this.dashboardPanel = new DashboardPanel(this);
         this.auditPanel = new SecurityAuditPanel(this);
         SettingsPanel settingsPanel = new SettingsPanel(this);
+        DataManagementPanel dataPanel = new DataManagementPanel(this);
+        PasswordGeneratorPanel generatorPanel = new PasswordGeneratorPanel();
 
         JPanel formPanel = createFormPanel();
 
-        // Creating the tab bar
         this.tabbedPane = new JTabbedPane();
-        this.tabbedPane.addTab("🔑 Mon Coffre-fort", dashboardPanel);
-        this.tabbedPane.addTab("➕ Ajouter", formPanel);
-        this.tabbedPane.addTab("🛡️ Audit Sécurité", auditPanel);
-        this.tabbedPane.addTab("⚙️ Options", settingsPanel);
+
+        // Creating the tab bar
+        this.tabbedPane.addTab("Mon Coffre-fort", vaultIcon, dashboardPanel);
+        this.tabbedPane.addTab("Ajouter", addIcon, formPanel);
+        this.tabbedPane.addTab("Audit Sécurité", auditIcon, auditPanel);
+        this.tabbedPane.addTab("Générateur", generatorIcon, generatorPanel);
+        this.tabbedPane.addTab("Outils & Data", dataIcon, dataPanel);
+        this.tabbedPane.addTab("Options", settingsIcon, settingsPanel);
 
         this.tabbedPane.addChangeListener(e -> {
             int selectedIndex = tabbedPane.getSelectedIndex();
@@ -113,41 +132,56 @@ public class PasswordManagerGUI extends JFrame {
 
     // -- SCREEN 1A: ACCOUNT CREATION (First Launch) ---
     private JPanel createRegisterPanel() {
-        JPanel panel = new JPanel(null);
+        JPanel container = new JPanel(new GridBagLayout()); // Automatic center
 
+        JPanel formPanel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(8, 8, 8, 8);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+
+        // TITLE
         JLabel title = new JLabel("Bienvenue ! Configurez votre coffre-fort", SwingConstants.CENTER);
-        title.setFont(new Font("Dialog", Font.BOLD, 20));
-        title.setBounds(0, 30, 650, 35);
-        panel.add(title);
+        title.setFont(new Font("Segoe UI Emoji", Font.BOLD, 20));
+        gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2;
+        formPanel.add(title, gbc);
 
-        JLabel userLabel = new JLabel("Identifiant / Login :");
-        userLabel.setBounds(120, 100, 180, 30);
-        panel.add(userLabel);
-        JTextField userInput = new JTextField();
-        userInput.setBounds(300, 100, 220, 30);
-        panel.add(userInput);
+        gbc.gridwidth = 1; // RESET WIDTH AND HEIGHT
 
-        JLabel passLabel = new JLabel("Mot de passe maître :");
-        passLabel.setBounds(120, 150, 180, 30);
-        panel.add(passLabel);
-        JPasswordField passInput = new JPasswordField();
-        passInput.setBounds(300, 150, 220, 30);
-        panel.add(passInput);
+        // ID
+        gbc.gridx = 0; gbc.gridy = 1;
+        formPanel.add(new JLabel("Identifiant / Login :"), gbc);
+        JTextField userInput = new JTextField(20);
+        gbc.gridx = 1; gbc.gridy = 1;
+        formPanel.add(userInput, gbc);
 
-        JLabel confirmLabel = new JLabel("Confirmer le mot de passe :");
-        confirmLabel.setBounds(120, 200, 180, 30);
-        panel.add(confirmLabel);
-        JPasswordField confirmInput = new JPasswordField();
-        confirmInput.setBounds(300, 200, 220, 30);
-        panel.add(confirmInput);
+        // PASSWORD
+        gbc.gridx = 0; gbc.gridy = 2;
+        formPanel.add(new JLabel("Mot de passe maître :"), gbc);
+        JPasswordField passInput = new JPasswordField(20);
+        gbc.gridx = 1; gbc.gridy = 2;
+        formPanel.add(passInput, gbc);
 
+        // Confirmation
+        gbc.gridx = 0; gbc.gridy = 3;
+        formPanel.add(new JLabel("Confirmer le mot de passe :"), gbc);
+        JPasswordField confirmInput = new JPasswordField(20);
+        gbc.gridx = 1; gbc.gridy = 3;
+        formPanel.add(confirmInput, gbc);
+
+        // Info
         JLabel infoLabel = new JLabel("<html><center><i>Ce mot de passe protégera l'ensemble de vos données.<br>Une clé de secours sera générée à l'étape suivante.</i></center></html>", SwingConstants.CENTER);
-        infoLabel.setBounds(50, 250, 550, 40);
-        panel.add(infoLabel);
+        gbc.gridx = 0; gbc.gridy = 4; gbc.gridwidth = 2;
+        formPanel.add(infoLabel, gbc);
 
+        // CREATE BUTTON
         JButton btnRegister = new JButton("Créer mon coffre-fort");
-        btnRegister.setFont(new Font("Dialog", Font.BOLD, 15));
-        btnRegister.setBounds(200, 310, 250, 45);
+        btnRegister.setFont(new Font("Segoe UI Emoji", Font.BOLD, 15));
+        btnRegister.setPreferredSize(new Dimension(250, 40));
+        gbc.gridx = 0; gbc.gridy = 5; gbc.gridwidth = 2;
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.anchor = GridBagConstraints.CENTER;
+        formPanel.add(btnRegister, gbc);
+
         btnRegister.addActionListener(e -> {
             String login = userInput.getText().trim();
             String pass = new String(passInput.getPassword());
@@ -182,37 +216,56 @@ public class PasswordManagerGUI extends JFrame {
                 JOptionPane.showMessageDialog(this, "La sauvegarde de la clé de secours est obligatoire pour continuer.", "Attention", JOptionPane.WARNING_MESSAGE);
             }
         });
-        panel.add(btnRegister);
 
-        return panel;
+        container.add(formPanel);
+        return container;
     }
 
     // -- SCREEN 1B: LOGIN (Return user) ---
     private JPanel createLoginPanel() {
-        JPanel panel = new JPanel(null);
+        JPanel container = new JPanel(new GridBagLayout()); // Automatic center
 
+        JPanel formPanel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(8, 8, 8, 8);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+
+        // TITLE
         JLabel title = new JLabel("Déverrouiller votre coffre-fort", SwingConstants.CENTER);
-        title.setFont(new Font("Dialog", Font.BOLD, 22));
-        title.setBounds(0, 40, 650, 35);
-        panel.add(title);
+        title.setFont(new Font("Segoe UI Emoji", Font.BOLD, 22));
+        gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2;
+        formPanel.add(title, gbc);
 
-        JLabel userLabel = new JLabel("Identifiant / Login :");
-        userLabel.setBounds(150, 120, 150, 30);
-        panel.add(userLabel);
-        JTextField userInput = new JTextField();
-        userInput.setBounds(300, 120, 200, 30);
-        panel.add(userInput);
+        gbc.gridwidth = 1; // RESET WIDTH AND HEIGHT
 
-        JLabel passLabel = new JLabel("Mot de passe maître :");
-        passLabel.setBounds(150, 170, 150, 30);
-        panel.add(passLabel);
-        JPasswordField passInput = new JPasswordField();
-        passInput.setBounds(300, 170, 200, 30);
-        panel.add(passInput);
+        // ID
+        gbc.gridx = 0; gbc.gridy = 1;
+        formPanel.add(new JLabel("Identifiant / Login :"), gbc);
+        JTextField userInput = new JTextField(20);
+        gbc.gridx = 1; gbc.gridy = 1;
+        formPanel.add(userInput, gbc);
 
+        // PASSWORD
+        gbc.gridx = 0; gbc.gridy = 2;
+        formPanel.add(new JLabel("Mot de passe maître :"), gbc);
+        JPasswordField passInput = new JPasswordField(20);
+        gbc.gridx = 1; gbc.gridy = 2;
+        formPanel.add(passInput, gbc);
+
+        // LOGIN BUTTON
         JButton btnLogin = new JButton("Se connecter");
-        btnLogin.setFont(new Font("Dialog", Font.BOLD, 15));
-        btnLogin.setBounds(225, 230, 200, 40);
+        btnLogin.setFont(new Font("Segoe UI Emoji", Font.BOLD, 15));
+        btnLogin.setPreferredSize(new Dimension(200, 40));
+        gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 2;
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.anchor = GridBagConstraints.CENTER;
+        formPanel.add(btnLogin, gbc);
+
+        // Bouton Récupération
+        JButton btnRecovery = new JButton("Mot de passe oublié ? Utiliser la clé de secours");
+        gbc.gridx = 0; gbc.gridy = 4; gbc.gridwidth = 2;
+        formPanel.add(btnRecovery, gbc);
+
         btnLogin.addActionListener(e -> {
             String login = userInput.getText().trim();
             String pass = new String(passInput.getPassword());
@@ -231,14 +284,11 @@ public class PasswordManagerGUI extends JFrame {
                 JOptionPane.showMessageDialog(this, "Identifiant ou mot de passe maître incorrect !", "Échec de connexion", JOptionPane.ERROR_MESSAGE);
             }
         });
-        panel.add(btnLogin);
 
-        JButton btnRecovery = new JButton("Mot de passe oublié ? Utiliser la clé de secours");
-        btnRecovery.setBounds(150, 310, 350, 30);
         btnRecovery.addActionListener(e -> openRecoveryDialog());
-        panel.add(btnRecovery);
 
-        return panel;
+        container.add(formPanel);
+        return container;
     }
 
     // -- DIALOG: Mandatory key download .txt ----
@@ -301,7 +351,7 @@ public class PasswordManagerGUI extends JFrame {
 
         JButton btnValidate = new JButton("Réinitialiser le mot de passe");
         btnValidate.setBounds(100, 180, 250, 40);
-        btnValidate.setFont(new Font("Dialog", Font.BOLD, 13));
+        btnValidate.setFont(new Font("Segoe UI Emoji", Font.BOLD, 13));
         btnValidate.addActionListener(evt -> {
             String login = txtLogin.getText().trim();
             String key = txtKey.getText().trim();
@@ -373,9 +423,11 @@ public class PasswordManagerGUI extends JFrame {
         JTextField tagsField = new JTextField(20);
         JCheckBox favoriteCheck = new JCheckBox("Marquer comme favori");
 
-        JButton btnGenerate = new JButton("🎲 Générer");
-        JButton btnAdd = new JButton("➕ Ajouter au coffre");
-        btnAdd.setFont(new Font("Dialog", Font.BOLD, 14));
+        JButton btnGenerate = new JButton("Générer");
+        btnGenerate.setIcon(diceIcon);
+        JButton btnAdd = new JButton("Ajouter au coffre");
+        btnAdd.setIcon(addIcon);
+        btnAdd.setFont(new Font("Segoe UI Emoji", Font.BOLD, 14));
 
         // Ligne Mot de passe + Bouton Générateur
         JPanel passPanel = new JPanel(new BorderLayout(5, 0));
@@ -419,20 +471,19 @@ public class PasswordManagerGUI extends JFrame {
         gbc.gridx = 1;
         panel.add(tagsField, gbc);
 
-        // Favori
+        // Favorites
         row++;
         gbc.gridx = 1; gbc.gridy = row;
         panel.add(favoriteCheck, gbc);
 
-        // Bouton Ajouter
+        // ADD BUTTON
         row++;
         gbc.gridx = 0; gbc.gridy = row; gbc.gridwidth = 2;
         panel.add(btnAdd, gbc);
 
         // --- Actions ---
         btnGenerate.addActionListener(e -> {
-            PasswordGenerator generator = new PasswordGenerator();
-            String generatedPass = generator.generatePassword(16, true, true, true, true);
+            String generatedPass = this.passwordGenerator.generatePassword(16, true, true, true, true);
             passField.setText(generatedPass);
         });
 
@@ -449,7 +500,6 @@ public class PasswordManagerGUI extends JFrame {
                 return;
             }
 
-            // Création avec le constructeur 7 arguments
             String currentDate = java.time.LocalDate.now().toString();
             PasswordEntry newEntry = new PasswordEntry(site, user, pass, currentDate, category, tags, isFavorite);
 
@@ -457,7 +507,6 @@ public class PasswordManagerGUI extends JFrame {
             saveVault();
             refreshDashboardDisplay();
 
-            // Reinitialisation des champs
             siteField.setText("");
             userField.setText("");
             passField.setText("");
@@ -582,5 +631,41 @@ public class PasswordManagerGUI extends JFrame {
 
     public ArrayList<PasswordEntry> getFakeDatabase() {
         return this.fakeDatabase;
+    }
+
+    private Timer autoLockTimer;
+
+    private void setupAutoLock() {
+        // Intercepts all user events in the application
+        Toolkit.getDefaultToolkit().addAWTEventListener(event -> {
+            resetInactivityTimer();
+        }, AWTEvent.MOUSE_EVENT_MASK | AWTEvent.KEY_EVENT_MASK | AWTEvent.MOUSE_MOTION_EVENT_MASK);
+
+        resetInactivityTimer();
+    }
+
+    public void resetInactivityTimer() {
+        if (autoLockTimer != null) {
+            autoLockTimer.stop();
+        }
+
+        int minutes = AppSettings.getAutoLockDelay();
+        if (minutes <= 0) return; // If 0, Auto-Lock is disabled
+
+        int delayMs = minutes * 60 * 1000;
+        autoLockTimer = new Timer(delayMs, e -> lockVault());
+        autoLockTimer.setRepeats(false);
+        autoLockTimer.start();
+    }
+
+    private void lockVault() {
+        if (autoLockTimer != null) autoLockTimer.stop();
+
+        JOptionPane.showMessageDialog(this,
+                "Coffre-fort verrouillé automatiquement en raison d'une période d'inactivité.",
+                "Auto-Lock", JOptionPane.WARNING_MESSAGE);
+
+        // Close the main window and redisplay the login screen/master password
+        this.dispose();
     }
 }

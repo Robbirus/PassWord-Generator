@@ -1,40 +1,42 @@
 package crypto;
 
-import java.awt.Toolkit;
-import java.awt.datatransfer.Clipboard;
+import java.awt.*;
+import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.StringSelection;
 import java.util.Timer;
 import java.util.TimerTask;
 
 public class ClipboardUtils {
 
+    private static Timer timer;
+
     /**
-     * Copy a text to the clipboard and automatically empty it after X seconds.
+     * Copy a text to the clipboard and delete it automatically after 30 seconds.
      */
-    public static void copyToClipboardWithTimeout(String text, int timeoutSeconds) {
-        if (text == null || text.isEmpty()) return;
-
-        // 1. Copy to the system clipboard
-        Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+    public static void copyAndAutoClear(String text, int delaySeconds) {
         StringSelection selection = new StringSelection(text);
-        clipboard.setContents(selection, selection);
+        Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, null);
 
-        // 2. Programming the automatic emptying
-        Timer timer = new Timer();
+        // Cancel the previous timer if there is one
+        if (timer != null) {
+            timer.cancel();
+        }
+
+        timer = new Timer(true);
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
                 try {
-                    // We check if the content is still the one we copied before emptying it.
-                    String currentContent = (String) clipboard.getData(java.awt.datatransfer.DataFlavor.stringFlavor);
-                    if (text.equals(currentContent)) {
-                        clipboard.setContents(new StringSelection(""), null);
+                    // Only empty the clipboard if the current data is still the one you copied
+                    var clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+                    if (clipboard.isDataFlavorAvailable(DataFlavor.stringFlavor)) {
+                        String currentContent = (String) clipboard.getData(DataFlavor.stringFlavor);
+                        if (text.equals(currentContent)) {
+                            clipboard.setContents(new StringSelection(""), null);
+                        }
                     }
-                } catch (Exception ignored) {
-                    // Ignoré si le contenu a changé ou est inaccessible
-                }
-                timer.cancel();
+                } catch (Exception ignored) {}
             }
-        }, timeoutSeconds * 1000L);
+        }, delaySeconds * 1000L);
     }
 }

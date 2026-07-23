@@ -1,5 +1,6 @@
 package UI;
 
+import crypto.ClipboardUtils;
 import crypto.PasswordGenerator;
 import model.AppSettings;
 import model.PasswordEntry;
@@ -25,6 +26,12 @@ public class DashboardPanel extends JPanel {
 
     private final String[] CATEGORIES = {"Toutes", "Général", "Réseaux Sociaux", "Travail", "Banque", "Achats", "Personnel"};
 
+    ImageIcon searchIcon    = UIUtils.loadAndScaleIcon("/icons/loupe.png", 16, 16);
+    ImageIcon favoriteIcon  = UIUtils.generateStarIcon(true, 16);
+    ImageIcon emptyStarIcon = UIUtils.generateStarIcon(false, 16);
+    ImageIcon editIcon      = UIUtils.loadAndScaleIcon("/icons/note.png", 16, 16);
+    ImageIcon diceIcon      = UIUtils.loadAndScaleIcon("/icons/dice.png", 16, 16);
+
     public DashboardPanel(PasswordManagerGUI mainFrame) {
         this.mainFrame = mainFrame;
         setLayout(new BorderLayout(10, 10));
@@ -32,13 +39,15 @@ public class DashboardPanel extends JPanel {
 
         // --- HEADER ---
         JLabel titleLabel = new JLabel("Mon Coffre-fort de Mots de Passe", SwingConstants.CENTER);
-        titleLabel.setFont(new Font("Dialog", Font.BOLD, 20));
+        titleLabel.setFont(new Font("Segoe UI Emoji", Font.BOLD, 20));
 
         // --- Search bar and filters ---
         JPanel filterPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
 
         // Search field
-        filterPanel.add(new JLabel("🔍 Rechercher :"));
+        JLabel searchLabel = new JLabel("Rechercher :");
+        searchLabel.setIcon(searchIcon);
+        filterPanel.add(searchLabel);
         searchField = new JTextField(15);
         searchField.getDocument().addDocumentListener(new DocumentListener() {
             public void insertUpdate(DocumentEvent e) { applyFiltersAndRefresh(); }
@@ -54,7 +63,8 @@ public class DashboardPanel extends JPanel {
         filterPanel.add(categoryFilterCombo);
 
         // Favorites
-        favoritesFilterCheck = new JCheckBox("★ Favoris uniquement");
+        favoritesFilterCheck = new JCheckBox("Favoris uniquement");
+        favoritesFilterCheck.setIcon(favoriteIcon);
         favoritesFilterCheck.addActionListener(e -> applyFiltersAndRefresh());
         filterPanel.add(favoritesFilterCheck);
 
@@ -64,7 +74,9 @@ public class DashboardPanel extends JPanel {
         add(topContainer, BorderLayout.NORTH);
 
         // --- TABLE ---
+        char star = 0x00002B50;
         String[] columns = {"★", "Logo", "Site Web", "Identifiant", "Mot de Passe", "Catégorie", "Tags", "Date"};
+        columns[0] = Character.toString(star);
         tableModel = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -73,14 +85,14 @@ public class DashboardPanel extends JPanel {
 
             @Override
             public Class<?> getColumnClass(int columnIndex) {
-                if (columnIndex == 1) return ImageIcon.class; // Support de l'image Favicon
+                if (columnIndex == 0 || columnIndex == 1) return ImageIcon.class;
                 return String.class;
             }
         };
 
         table = new JTable(tableModel);
         table.setRowHeight(32);
-        table.setFont(new Font("Dialog", Font.PLAIN, 13));
+        table.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 13));
         table.setAutoCreateRowSorter(true);
 
         // Column Sizing
@@ -89,13 +101,8 @@ public class DashboardPanel extends JPanel {
         table.getColumnModel().getColumn(2).setPreferredWidth(140); // Site
         table.getColumnModel().getColumn(3).setPreferredWidth(120); // User
         table.getColumnModel().getColumn(4).setPreferredWidth(100); // Pass
-        table.getColumnModel().getColumn(5).setPreferredWidth(100); // Catégorie
+        table.getColumnModel().getColumn(5).setPreferredWidth(100); // Category
         table.getColumnModel().getColumn(6).setPreferredWidth(100); // Tags
-
-        // Centering of the favorite star
-        DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
-        centerRenderer.setHorizontalAlignment(JLabel.CENTER);
-        table.getColumnModel().getColumn(0).setCellRenderer(centerRenderer);
 
         JScrollPane scrollPane = new JScrollPane(table);
         add(scrollPane, BorderLayout.CENTER);
@@ -104,7 +111,8 @@ public class DashboardPanel extends JPanel {
         JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
 
         JButton btnCopy = new JButton("Copier");
-        JButton btnEdit = new JButton("✏️ Éditer");
+        JButton btnEdit = new JButton("Éditer");
+        btnEdit.setIcon(editIcon);
         JButton btnDelete = new JButton("Supprimer");
         btnDelete.setForeground(new Color(220, 53, 69));
 
@@ -113,8 +121,11 @@ public class DashboardPanel extends JPanel {
             PasswordEntry entry = getSelectedEntry();
             if (entry != null) {
                 StringSelection selection = new StringSelection(entry.getPassword());
-                Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, null);
-                JOptionPane.showMessageDialog(this, "Mot de passe copié dans le presse-papier !");
+
+                int delay = AppSettings.getClipboardClearDelay();
+                ClipboardUtils.copyAndAutoClear(entry.getPassword(), delay);
+
+                JOptionPane.showMessageDialog(this, "Mot de passe copié ! (Effacé du presse-papier dans " + delay + "s)");
             } else {
                 JOptionPane.showMessageDialog(this, "Veuillez sélectionner une ligne.", "Attention", JOptionPane.WARNING_MESSAGE);
             }
@@ -135,7 +146,8 @@ public class DashboardPanel extends JPanel {
                 JTextField tagsInput = new JTextField(entry.getTags(), 20);
                 JCheckBox favoriteInput = new JCheckBox("Marquer comme favori", entry.isFavorite());
 
-                JButton btnGenerate = new JButton("🎲 Générer");
+                JButton btnGenerate = new JButton("Générer");
+                btnGenerate.setIcon(diceIcon);
                 btnGenerate.addActionListener(genEvent -> {
                     PasswordGenerator generator = new PasswordGenerator();
                     String newPass = generator.generatePassword(16, true, true, true, true);
@@ -261,12 +273,13 @@ public class DashboardPanel extends JPanel {
                     }
                 }
 
-                String star = entry.isFavorite() ? "★" : "☆";
                 String displayedPassword = showPass ? entry.getPassword() : "••••••••";
                 ImageIcon favicon = entry.FetchFavicon();
 
                 tableModel.addRow(new Object[]{
-                        star,
+                        entry.isFavorite()
+                                ? favoriteIcon
+                                : emptyStarIcon,
                         favicon,
                         entry.getWebsite(),
                         entry.getUsername(),

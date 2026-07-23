@@ -24,10 +24,10 @@ public class SecurityAuditPanel extends JPanel {
         // --- EN-TÊTE DU SCORE GLOBAL ---
         JPanel headerPanel = new JPanel(new GridLayout(3, 1, 5, 5));
         JLabel titleLabel = new JLabel("Audit de Sécurité du Coffre-Fort", SwingConstants.CENTER);
-        titleLabel.setFont(new Font("Dialog", Font.BOLD, 18));
+        titleLabel.setFont(new Font("Segoe UI Emoji", Font.BOLD, 18));
 
         overallScoreLabel = new JLabel("Score global : 0%", SwingConstants.CENTER);
-        overallScoreLabel.setFont(new Font("Dialog", Font.BOLD, 14));
+        overallScoreLabel.setFont(new Font("Segoe UI Emoji", Font.BOLD, 14));
 
         overallProgressBar = new JProgressBar(0, 100);
         overallProgressBar.setStringPainted(true);

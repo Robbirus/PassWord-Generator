@@ -1,9 +1,9 @@
 import UI.PasswordManagerGUI;
+import com.formdev.flatlaf.FlatDarkLaf;
+import com.formdev.flatlaf.FlatLaf;
 
-import javax.swing.*;
 
 public class App {
-
     public static void main(String[] args) {
         if (model.AppSettings.isDarkMode()) {
             com.formdev.flatlaf.FlatDarkLaf.setup();
@@ -11,8 +11,14 @@ public class App {
             com.formdev.flatlaf.FlatLightLaf.setup();
         }
 
-        SwingUtilities.invokeLater(() -> {
-            new PasswordManagerGUI().setVisible(true);
+        // Ajoute ça APRÈS FlatLaf setup :
+        java.awt.EventQueue.invokeLater(() -> {
+            try {
+                Class.forName("com.formdev.flatlaf.FlatLaf").getMethod("updateUI").invoke(null);
+            } catch (Exception e) { e.printStackTrace(); }
         });
+        
+            new PasswordManagerGUI().setVisible(true);
+
     }
 }
