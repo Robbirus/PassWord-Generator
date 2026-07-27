@@ -6,22 +6,25 @@ import sys
 # ==============================================================================
 # CONFIGURATION DU PROJET
 # ==============================================================================
-# Chemin vers ton fichier JAR d'origine généré par l'IDE
-JAR_SOURCE_PATH = os.path.join(
+# Chemin vers le jar "fat" (autonome, avec JavaFX embarqué) généré par Maven.
+# Nécessite le plugin maven-shade-plugin dans le pom.xml
+MAVEN_PROJECT_DIR = os.path.join(
     os.path.expanduser("~"),
     "PassWord-Generator",
-    "out",
-    "artifacts",
-    "PassWord_Generator_jar",
-    "PassWord-Generator.jar"
+    "PassWordGenerator"
 )
+JAR_SOURCE_PATH = os.path.join(MAVEN_PROJECT_DIR, "target", "polpopass-fx-1.0.jar")
+
+# Icône de l'application. Sur Windows, jpackage exige un fichier .ico
+# (idéalement multi-résolution : 16/32/48/256 px). Un .png ne fonctionnera pas.
+ICON_PATH = os.path.join(MAVEN_PROJECT_DIR, "icon.ico")
 
 # Dossier racine où seront stockées toutes tes releases
 BASE_BUILDS_DIR = r"C:\PasswordManager_Builds"
 
 # Informations sur l'application
-APP_NAME = "PasswordManager"
-MAIN_CLASS = "App"
+APP_NAME = "PolpoPass"
+MAIN_CLASS = "app.Launcher"
 VENDOR = "Robbirus"
 
 
@@ -31,11 +34,27 @@ VENDOR = "Robbirus"
 def create_release(version):
     print(f"🚀 Début de la génération de la release v{version}...")
 
+    # Étape 0 : (re)construire le jar avec Maven pour être sûr qu'il est à jour
+    print("🔨 Construction du projet avec Maven (mvn clean package)...")
+    result_mvn = subprocess.run(
+        ["mvn", "clean", "package"],
+        cwd=MAVEN_PROJECT_DIR,
+        shell=True
+    )
+    if result_mvn.returncode != 0:
+        print("❌ ERREUR : La compilation Maven a échoué. Corrige les erreurs avant de continuer.")
+        sys.exit(1)
+
     # Vérification que le fichier JAR source existe bien
     if not os.path.exists(JAR_SOURCE_PATH):
         print(f"❌ ERREUR : Fichier JAR introuvable dans :\n   {JAR_SOURCE_PATH}")
-        print("Veuillez d'abord compiler votre projet dans votre IDE.")
+        print("Vérifie que maven-shade-plugin est bien configuré dans le pom.xml")
+        print("et que le nom du jar correspond à <artifactId>-<version>.")
         sys.exit(1)
+
+    if not os.path.exists(ICON_PATH):
+        print(f"⚠️ Attention : icône introuvable dans :\n   {ICON_PATH}")
+        print("La release sera générée avec l'icône Java par défaut (Duke).")
 
     # Définition des dossiers de version
     version_dir = os.path.join(BASE_BUILDS_DIR, f"v{version}")
@@ -49,7 +68,7 @@ def create_release(version):
     os.makedirs(release_dir, exist_ok=True)
 
     # Nom du JAR temporaire pour jpackage et du JAR final
-    temp_jar_name = "PassWord-Generator.jar"
+    temp_jar_name = "PolpoPass.jar"
     temp_jar_path = os.path.join(input_dir, temp_jar_name)
     final_jar_path = os.path.join(release_dir, f"{APP_NAME}-{version}.jar")
 
@@ -58,14 +77,9 @@ def create_release(version):
     shutil.copy2(JAR_SOURCE_PATH, temp_jar_path)
     shutil.copy2(JAR_SOURCE_PATH, final_jar_path)
 
-    # --------------------------------------------------------------------------
-    # 1. Génération de l'EXE
-    # --------------------------------------------------------------------------
-    print("⚙️ Génération de l'exécutable (.exe)...")
-    cmd_exe = [
-        "jpackage",
+    # Options communes à l'EXE et au MSI
+    common_args = [
         "--java-options", "--enable-native-access=ALL-UNNAMED",
-        "--type", "exe",
         "--input", input_dir,
         "--dest", release_dir,
         "--name", f"{APP_NAME}",
@@ -74,8 +88,16 @@ def create_release(version):
         "--win-shortcut",
         "--win-menu",
         "--app-version", version,
-        "--vendor", VENDOR
+        "--vendor", VENDOR,
     ]
+    if os.path.exists(ICON_PATH):
+        common_args += ["--icon", ICON_PATH]
+
+    # --------------------------------------------------------------------------
+    # 1. Génération de l'EXE
+    # --------------------------------------------------------------------------
+    print("⚙️ Génération de l'exécutable (.exe)...")
+    cmd_exe = ["jpackage", "--type", "exe"] + common_args
 
     result_exe = subprocess.run(cmd_exe)
     if result_exe.returncode != 0:
@@ -87,20 +109,7 @@ def create_release(version):
     # 2. Génération du MSI
     # --------------------------------------------------------------------------
     print("⚙️ Génération de l'installateur (.msi)...")
-    cmd_msi = [
-        "jpackage",
-        "--java-options", "--enable-native-access=ALL-UNNAMED",
-        "--type", "msi",
-        "--input", input_dir,
-        "--dest", release_dir,
-        "--name", f"{APP_NAME}",
-        "--main-jar", temp_jar_name,
-        "--main-class", MAIN_CLASS,
-        "--win-shortcut",
-        "--win-menu",
-        "--app-version", version,
-        "--vendor", VENDOR
-    ]
+    cmd_msi = ["jpackage", "--type", "msi"] + common_args
 
     result_msi = subprocess.run(cmd_msi)
     if result_msi.returncode != 0:
