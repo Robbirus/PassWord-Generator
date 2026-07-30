@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ProgressBar?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
+            fx:controller="controllers.AuditController">
+    <padding>
+        <Insets top="15" right="15" bottom="15" left="15"/>
+    </padding>
+
+    <top>
+        <VBox spacing="8" alignment="CENTER">
+            <Label text="Audit de Sécurité du Coffre-Fort" styleClass="section-title"/>
+            <Label fx:id="overallScoreLabel" text="Score global : 0%"/>
+            <ProgressBar fx:id="overallProgressBar" progress="0" prefWidth="320"/>
+        </VBox>
+    </top>
+
+    <center>
+        <ScrollPane fitToWidth="true">
+            <VBox fx:id="detailsPanel" spacing="8">
+                <padding>
+                    <Insets top="15" right="0" bottom="0" left="0"/>
+                </padding>
+            </VBox>
+        </ScrollPane>
+    </center>
+</BorderPane>

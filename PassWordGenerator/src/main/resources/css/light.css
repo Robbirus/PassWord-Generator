@@ -1,0 +1,70 @@
+.root {
+    -fx-base: #f4f5f7;
+    -fx-background: #f4f5f7;
+    -fx-font-family: "Segoe UI", sans-serif;
+    -fx-font-size: 13px;
+    -fx-accent: #2f6fed;
+}
+
+.section-title {
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #1f2933;
+}
+
+.options-title {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #1f2933;
+}
+
+.auth-card {
+    -fx-background-color: white;
+    -fx-background-radius: 10;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.12), 18, 0, 0, 4);
+}
+
+.auth-title {
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #1f2933;
+}
+
+.auth-info {
+    -fx-font-size: 12px;
+    -fx-text-fill: #6b7280;
+}
+
+.card, .options-box {
+    -fx-background-color: white;
+    -fx-background-radius: 8;
+    -fx-border-color: #e2e5e9;
+    -fx-border-radius: 8;
+}
+
+.button {
+    -fx-background-radius: 6;
+    -fx-cursor: hand;
+}
+
+.primary-button {
+    -fx-background-color: #2f6fed;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
+.primary-button:hover {
+    -fx-background-color: #2a63d4;
+}
+
+.danger-button {
+    -fx-text-fill: #dc3545;
+}
+
+.table-view, .tree-table-view {
+    -fx-background-radius: 6;
+}
+
+.tab-pane .tab-header-area .tab-header-background {
+    -fx-background-color: white;
+}

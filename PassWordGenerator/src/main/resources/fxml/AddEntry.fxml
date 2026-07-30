@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.StackPane?>
+
+<StackPane xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
+           fx:controller="controllers.AddEntryController">
+    <GridPane hgap="10" vgap="14" maxWidth="520" maxHeight="-Infinity">
+        <padding>
+            <Insets top="30" right="30" bottom="30" left="30"/>
+        </padding>
+        <columnConstraints>
+            <ColumnConstraints minWidth="200"/>
+            <ColumnConstraints minWidth="260" hgrow="ALWAYS"/>
+        </columnConstraints>
+
+        <Label text="Site Web / Application :" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+        <TextField fx:id="siteField" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+
+        <Label text="Identifiant / Email :" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+        <TextField fx:id="userField" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+
+        <Label text="Mot de Passe :" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+        <HBox spacing="5" GridPane.rowIndex="2" GridPane.columnIndex="1">
+            <TextField fx:id="passField" HBox.hgrow="ALWAYS"/>
+            <Button text="Générer" onAction="#handleGenerate"/>
+        </HBox>
+
+        <Label text="Catégorie :" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+        <ComboBox fx:id="categoryCombo" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+
+        <Label text="Tags (séparés par des virgules) :" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
+        <TextField fx:id="tagsField" GridPane.rowIndex="4" GridPane.columnIndex="1"/>
+
+        <CheckBox fx:id="favoriteCheck" text="Marquer comme favori" GridPane.rowIndex="5" GridPane.columnIndex="1"/>
+
+        <Button text="Ajouter au coffre" styleClass="primary-button" onAction="#handleAdd" maxWidth="Infinity"
+                GridPane.rowIndex="6" GridPane.columnIndex="0" GridPane.columnSpan="2"/>
+    </GridPane>
+</StackPane>

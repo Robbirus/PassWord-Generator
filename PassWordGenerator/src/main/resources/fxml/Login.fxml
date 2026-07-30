@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+
+<StackPane xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
+           fx:controller="controllers.LoginController">
+    <VBox alignment="CENTER" spacing="15" maxWidth="420" styleClass="auth-card">
+        <padding>
+            <Insets top="30" right="30" bottom="30" left="30"/>
+        </padding>
+
+        <Label text="Déverrouiller votre coffre-fort" styleClass="auth-title" wrapText="true"
+               alignment="CENTER" textAlignment="CENTER"/>
+
+        <GridPane hgap="10" vgap="12">
+            <columnConstraints>
+                <ColumnConstraints minWidth="150"/>
+                <ColumnConstraints minWidth="220" hgrow="ALWAYS"/>
+            </columnConstraints>
+
+            <Label text="Identifiant / Login :" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+            <TextField fx:id="userInput" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+
+            <Label text="Mot de passe maître :" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+            <PasswordField fx:id="passInput" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+        </GridPane>
+
+        <Button text="Se connecter" styleClass="primary-button" onAction="#handleLogin"/>
+        <Button text="Mot de passe oublié ? Utiliser la clé de secours" onAction="#handleRecovery"/>
+    </VBox>
+</StackPane>

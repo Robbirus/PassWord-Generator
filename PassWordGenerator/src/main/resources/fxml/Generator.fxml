@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ProgressBar?>
+<?import javafx.scene.control.Slider?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
+            fx:controller="controllers.GeneratorController">
+    <padding>
+        <Insets top="25" right="25" bottom="25" left="25"/>
+    </padding>
+
+    <top>
+        <Label text="Générateur &amp; Testeur de Robustesse" styleClass="section-title" BorderPane.alignment="CENTER"/>
+    </top>
+
+    <center>
+        <VBox spacing="15" alignment="TOP_CENTER">
+            <padding>
+                <Insets top="20" right="0" bottom="0" left="0"/>
+            </padding>
+            <HBox spacing="10" alignment="CENTER">
+                <TextField fx:id="resultField" prefWidth="320" alignment="CENTER" style="-fx-font-family: monospace; -fx-font-weight: bold; -fx-font-size: 16px;"/>
+                <Button text="Régénérer" onAction="#handleRegenerate"/>
+                <Button text="Copier" onAction="#handleCopy"/>
+            </HBox>
+
+            <VBox spacing="6" alignment="CENTER">
+                <ProgressBar fx:id="strengthBar" progress="0" prefWidth="400"/>
+                <Label fx:id="strengthLabel" text="Robustesse : Faible"/>
+                <Label fx:id="crackTimeLabel" text="Temps estimé pour le cracker : Instantané"/>
+            </VBox>
+
+            <VBox spacing="10" styleClass="options-box">
+                <padding>
+                    <Insets top="12" right="12" bottom="12" left="12"/>
+                </padding>
+                <Label text="Options de génération automatique" styleClass="options-title"/>
+                <Label fx:id="lengthLabel" text="Longueur du mot de passe : 16"/>
+                <Slider fx:id="lengthSlider" min="4" max="32" value="16" majorTickUnit="4" showTickMarks="true" showTickLabels="true"/>
+                <CheckBox fx:id="upperCheck" text="Majuscules (A-Z)" selected="true"/>
+                <CheckBox fx:id="lowerCheck" text="Minuscules (a-z)" selected="true"/>
+                <CheckBox fx:id="digitsCheck" text="Chiffres (0-9)" selected="true"/>
+                <CheckBox fx:id="symbolsCheck" text="Symboles (!@#$%...)" selected="true"/>
+            </VBox>
+        </VBox>
+    </center>
+</BorderPane>

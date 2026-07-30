@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
+            fx:controller="controllers.DashboardController">
+    <padding>
+        <Insets top="15" right="15" bottom="15" left="15"/>
+    </padding>
+
+    <top>
+        <VBox spacing="10">
+            <Label text="Mon Coffre-fort de Mots de Passe" styleClass="section-title"/>
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <Label text="Rechercher :"/>
+                <TextField fx:id="searchField" prefWidth="180"/>
+                <Label text="Catégorie :"/>
+                <ComboBox fx:id="categoryFilterCombo"/>
+                <CheckBox fx:id="favoritesFilterCheck" text="Favoris uniquement"/>
+            </HBox>
+        </VBox>
+    </top>
+
+    <center>
+        <TableView fx:id="table">
+            <columns>
+                <TableColumn fx:id="favColumn" text="★" prefWidth="36"/>
+                <TableColumn fx:id="logoColumn" text="Logo" prefWidth="46"/>
+                <TableColumn fx:id="siteColumn" text="Site Web" prefWidth="150"/>
+                <TableColumn fx:id="userColumn" text="Identifiant" prefWidth="130"/>
+                <TableColumn fx:id="passColumn" text="Mot de Passe" prefWidth="110"/>
+                <TableColumn fx:id="categoryColumn" text="Catégorie" prefWidth="110"/>
+                <TableColumn fx:id="tagsColumn" text="Tags" prefWidth="110"/>
+                <TableColumn fx:id="dateColumn" text="Date" prefWidth="95"/>
+            </columns>
+            <BorderPane.margin>
+                <Insets top="0" right="0" bottom="10" left="0"/>
+            </BorderPane.margin>
+        </TableView>
+    </center>
+
+    <bottom>
+        <HBox spacing="10" alignment="CENTER_RIGHT">
+            <padding>
+                <Insets top="10" right="0" bottom="0" left="0"/>
+            </padding>
+            <Button text="Copier" onAction="#handleCopy"/>
+            <Button text="Éditer" onAction="#handleEdit"/>
+            <Button text="Supprimer" styleClass="danger-button" onAction="#handleDelete"/>
+        </HBox>
+    </bottom>
+</BorderPane>

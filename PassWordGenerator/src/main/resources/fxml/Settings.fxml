@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Spinner?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
+            fx:controller="controllers.SettingsController">
+    <padding>
+        <Insets top="25" right="25" bottom="25" left="25"/>
+    </padding>
+
+    <top>
+        <Label text="Paramètres de l'Application" styleClass="section-title"/>
+    </top>
+
+    <center>
+        <VBox spacing="20" styleClass="card">
+            <BorderPane.margin>
+                <Insets top="20" right="0" bottom="0" left="0"/>
+            </BorderPane.margin>
+            <padding>
+                <Insets top="20" right="20" bottom="20" left="20"/>
+            </padding>
+            <Label text="Sécurité &amp; Affichage" styleClass="options-title"/>
+
+            <CheckBox fx:id="showPasswordsCheck" text="Afficher les mots de passe en clair dans le tableau par défaut"/>
+
+            <CheckBox fx:id="darkModeCheck" text="Mode sombre"/>
+
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <Label text="Effacer le presse-papier après :"/>
+                <Spinner fx:id="clipboardSpinner" editable="true" prefWidth="90"/>
+                <Label text="secondes"/>
+            </HBox>
+
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <Label text="Verrouiller automatiquement après :"/>
+                <Spinner fx:id="autoLockSpinner" editable="true" prefWidth="90"/>
+                <Label text="minutes (0 = Désactivé)"/>
+            </HBox>
+        </VBox>
+    </center>
+
+    <bottom>
+        <HBox alignment="CENTER_RIGHT">
+            <BorderPane.margin>
+                <Insets top="15" right="0" bottom="0" left="0"/>
+            </BorderPane.margin>
+            <Button text="Enregistrer les préférences" styleClass="primary-button" onAction="#handleSave"/>
+        </HBox>
+    </bottom>
+</BorderPane>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
+      fx:controller="controllers.RecoveryDialogController"
+      spacing="15" alignment="TOP_CENTER">
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
+    <Label text="Récupération par Clé de Secours" style="-fx-font-weight: bold; -fx-font-size: 15px;"/>
+
+    <GridPane hgap="10" vgap="10">
+        <columnConstraints>
+            <ColumnConstraints minWidth="110"/>
+            <ColumnConstraints minWidth="230" hgrow="ALWAYS"/>
+        </columnConstraints>
+
+        <Label text="Identifiant :" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+        <TextField fx:id="txtLogin" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+
+        <Label text="Clé de Secours :" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+        <TextField fx:id="txtKey" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+    </GridPane>
+
+    <Button text="Charger un fichier .txt" onAction="#handleImportKeyFile" maxWidth="Infinity"/>
+    <Button text="Réinitialiser le mot de passe" styleClass="primary-button" onAction="#handleValidate" maxWidth="Infinity"/>
+</VBox>
