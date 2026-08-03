@@ -23,9 +23,13 @@ import java.util.Optional;
 public class DashboardController implements BaseController {
 
     private static final String[] CATEGORIES =
-            {"Toutes", "Général", "Réseaux Sociaux", "Travail", "Banque", "Achats", "Personnel"};
+            {"Général", "Réseaux Sociaux", "Travail",
+                    "Banque", "Achats", "Personnel",
+                    "Jeux", "Loisir", "Streaming"};
     private static final String[] FORM_CATEGORIES =
-            {"Général", "Réseaux Sociaux", "Travail", "Banque", "Achats", "Personnel"};
+            {"Général", "Réseaux Sociaux", "Travail",
+                    "Banque", "Achats", "Personnel",
+                    "Jeux", "Loisir", "Streaming"};
 
     @FXML private TextField searchField;
     @FXML private ComboBox<String> categoryFilterCombo;
