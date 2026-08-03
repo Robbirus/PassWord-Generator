@@ -12,7 +12,9 @@ import model.PasswordEntry;
 public class AddEntryController implements BaseController {
 
     private static final String[] CATEGORIES =
-            {"Général", "Réseaux Sociaux", "Travail", "Banque", "Achats", "Personnel"};
+            {"Général", "Réseaux Sociaux", "Travail",
+                    "Banque", "Achats", "Personnel",
+                    "Jeux", "Loisir", "Streaming"};
 
     @FXML private TextField siteField;
     @FXML private TextField userField;

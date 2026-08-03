@@ -5,7 +5,9 @@ import java.util.Properties;
 
 public class AppSettings {
 
-    private static final String CONFIG_FILE = "app_config.properties";
+    private static final String CONFIG_FILE = System.getProperty("user.home")
+            + File.separator + ".vaultjar"
+            + File.separator + "polpopass_config.properties";
 
     private static boolean showPasswordsByDefault = false;
     private static boolean darkMode = false;
